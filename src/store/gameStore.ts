@@ -13,7 +13,8 @@ export type Screen =
   | 'online'
   | 'leaderboard'
   | 'personal'
-  | 'coach';
+  | 'coach'
+  | 'rush';
 
 export type BattleSetup =
   | { kind: 'campaign'; level: number }

@@ -14,6 +14,7 @@ import { Menu } from './ui/screens/Menu';
 import { Online } from './ui/screens/Online';
 import { PersonalCalibration } from './ui/screens/PersonalCalibration';
 import { Results } from './ui/screens/Results';
+import { Rush } from './ui/screens/Rush';
 import { Shop } from './ui/screens/Shop';
 
 function DevTools() {
@@ -48,6 +49,7 @@ export function App() {
       {screen === 'leaderboard' && <Leaderboard />}
       {screen === 'personal' && <PersonalCalibration />}
       {screen === 'coach' && <Coach />}
+      {screen === 'rush' && <Rush />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>

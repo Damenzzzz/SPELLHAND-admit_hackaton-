@@ -31,6 +31,8 @@ export interface SaveData {
   personal?: PersonalModel;
   /** История сессий для «Тренера». */
   history?: SessionRecord[];
+  /** Рекорд разминки. */
+  rushBest?: number;
 }
 
 const DEFAULT_SAVE: SaveData = {

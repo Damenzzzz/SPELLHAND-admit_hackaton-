@@ -702,3 +702,11 @@ img.shop-icon { width: 110px; height: 110px; object-fit: contain; }
 .heatmap { margin: 0; text-align: center; }
 .heatmap figcaption { color: var(--muted); }
 .heatmap-count { fill: #fff; font-size: 13px; font-weight: 700; }
+
+/* --- разминка --- */
+.rush-target { display: flex; align-items: center; gap: 12px; font-size: 28px; }
+.rush-icon.spell-img { width: 64px; height: 64px; }
+.rush-timer { height: 10px; border-radius: 5px; overflow: hidden; background: rgba(255, 255, 255, 0.1); }
+.rush-timer-fill { height: 100%; background: linear-gradient(90deg, var(--danger), var(--gold), var(--ok)); transform-origin: left; }
+.toast-bad-inline { background: rgba(255, 90, 106, 0.2); border-color: var(--danger); }
+.menu .logo-img { width: min(380px, 70vw); }

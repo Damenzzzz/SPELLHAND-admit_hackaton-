@@ -159,6 +159,7 @@ export class GestureEngine {
 
   // dev
   private devHold: GestureId | null = null;
+  private devHoldSince = 0;
 
   on(fn: Listener): () => void {
     this.listeners.add(fn);
@@ -171,6 +172,7 @@ export class GestureEngine {
 
   /** dev-режим: держать позу с клавиатуры. */
   setDevHold(g: GestureId | null) {
+    if (g !== this.devHold) this.devHoldSince = performance.now();
     this.devHold = g;
   }
 
@@ -232,7 +234,7 @@ export class GestureEngine {
       best: best?.id ?? null,
       bestScore: best?.score ?? 0,
       active: devActive ?? this.active,
-      activeSince: devActive ? now : this.activeSince,
+      activeSince: devActive ? this.devHoldSince : this.activeSince,
       activeHandIdx: activeIdx,
       quality: devActive ? 0.92 : this.quality,
       charge: devActive === 'fireball' ? 1 : charge,
