@@ -1,6 +1,7 @@
 import { isDev } from './dev';
 import { useGame } from './store/gameStore';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { playMusic } from './game/music';
 import { DevPanel, useDevKeys } from './ui/DevPanel';
 import { RecorderOverlay } from './ui/RecorderOverlay';
 import { SoundBadge } from './ui/SoundBadge';
@@ -39,6 +40,10 @@ function DevTools() {
 
 export function App() {
   const screen = useGame((s) => s.screen);
+  // музыка: бой — боевая тема, остальное — тема меню (калибровка — тишина)
+  useEffect(() => {
+    playMusic(screen === 'battle' ? 'battle' : screen === 'calibration' ? null : 'menu');
+  }, [screen]);
   return (
     <main className="app">
       {screen === 'calibration' && <Calibration />}
