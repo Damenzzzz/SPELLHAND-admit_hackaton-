@@ -1,0 +1,8 @@
+node_modules
+dist
+.vercel
+.env*
+.DS_Store
+*.log
+# генерируется postinstall-скриптом (scripts/copy-mediapipe.mjs)
+public/mediapipe/
