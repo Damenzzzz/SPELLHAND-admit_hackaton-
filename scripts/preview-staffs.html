@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- dev-превью GLB-посохов: npm run dev → /scripts/preview-staffs.html -->
+<html>
+  <body style="margin: 0; background: #0b1026">
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+      import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+
+      const ids = ['staff_apprentice', 'staff_oak', 'staff_ice', 'staff_thunder', 'staff_archmage'];
+      const dir = new URLSearchParams(location.search).get('dir') ?? 'models';
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(1000, 460);
+      document.body.appendChild(renderer.domElement);
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(30, 1000 / 460, 0.1, 10);
+      camera.position.set(0, 0.15, 2.2);
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const key = new THREE.DirectionalLight(0xffffff, 2.2);
+      key.position.set(1, 2, 2);
+      scene.add(key);
+      const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+      const staffs = await Promise.all(ids.map((id) => loader.loadAsync(`/assets/${dir}/${id}.glb`)));
+      staffs.forEach((g, i) => {
+        g.scene.position.set((i - 2) * 0.36, 0, 0);
+        scene.add(g.scene);
+      });
+      const loop = (t) => {
+        staffs.forEach((g) => (g.scene.rotation.y = t / 1500));
+        renderer.render(scene, camera);
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+      window.ready = true;
+    </script>
+  </body>
+</html>
