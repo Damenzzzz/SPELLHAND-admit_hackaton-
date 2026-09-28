@@ -8,6 +8,7 @@ import { useSave } from '../store/saveStore';
 import { useVision } from '../store/visionStore';
 import type { HandFeatures } from '../vision/features';
 import { GESTURE_COLOR } from './colors';
+import { HandOccluders, HandVFX } from './ar/HandEffects';
 import { coverBox } from './HandOverlay';
 
 /** Длина посоха в размерах ладони (wrist → middle MCP). */
@@ -133,6 +134,8 @@ export default function StaffAttachment() {
       <ambientLight intensity={1.1} />
       <directionalLight position={[300, 500, 800]} intensity={2.2} />
       <directionalLight position={[-400, -200, 300]} intensity={0.6} color="#8fb8ff" />
+      <HandOccluders />
+      <HandVFX />
       <Suspense fallback={null}>
         <Staff key={staffId} id={staffId} />
       </Suspense>
