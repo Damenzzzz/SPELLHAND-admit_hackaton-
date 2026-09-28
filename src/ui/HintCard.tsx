@@ -1,6 +1,7 @@
 import { GhostHand } from '../render/GhostHand';
 import { TEMPLATE_BY_ID } from '../gestures/templates';
 import { useGesture } from '../store/gestureStore';
+import { FAIL_BADGE } from './failCategories';
 import { SpellIcon } from './SpellIcon';
 
 /**
@@ -14,8 +15,15 @@ export function HintCard({ compact = false }: { compact?: boolean }) {
   if (!hint) return null;
 
   const tpl = hint.gesture ? TEMPLATE_BY_ID[hint.gesture] : null;
+  const badge = FAIL_BADGE[hint.category];
   return (
-    <div className={`hint-card hint-card-${hint.kind} ${compact ? 'hint-compact' : ''}`}>
+    <div
+      className={`hint-card hint-card-${hint.kind} ${compact ? 'hint-compact' : ''}`}
+      style={{ borderColor: badge.color }}
+    >
+      <span className="fail-badge" style={{ background: badge.color }} title={badge.label}>
+        {badge.icon}
+      </span>
       {hint.kind === 'pose' && tpl && !compact && (
         <GhostHand gesture={tpl.id} size={96} badFingers={hint.fingers} />
       )}

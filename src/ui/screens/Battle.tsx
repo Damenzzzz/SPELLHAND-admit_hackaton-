@@ -20,6 +20,7 @@ import { useGesture } from '../../store/gestureStore';
 import { useSave } from '../../store/saveStore';
 import { useVision } from '../../store/visionStore';
 import { AssetImg } from '../AssetImg';
+import { FAIL_BADGE } from '../failCategories';
 import { HintCard } from '../HintCard';
 import { SpellIcon } from '../SpellIcon';
 
@@ -169,7 +170,10 @@ export function BattleScreen() {
           break;
         case 'reject':
           sfx.reject();
-          toast(`${TEMPLATES.find((t) => t.id === e.spell)?.name ?? ''}: ${e.reason}`, 'bad');
+          toast(
+            `${FAIL_BADGE[e.kind].icon} ${TEMPLATES.find((t) => t.id === e.spell)?.name ?? ''}: ${e.reason}`,
+            e.kind === 'interrupted' ? 'bad' : 'info',
+          );
           break;
         case 'interrupt':
           toast(e.side === 'player' ? 'Заряд сбит ветром!' : 'Каст врага сбит!', e.side === 'player' ? 'bad' : 'good');

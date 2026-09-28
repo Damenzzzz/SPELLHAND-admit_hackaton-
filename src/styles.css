@@ -684,3 +684,4 @@ img.shop-icon { width: 110px; height: 110px; object-fit: contain; }
   mask: radial-gradient(circle, transparent 60%, #000 61%);
   pointer-events: none;
 }
+.fail-badge { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; font-size: 18px; color: #0b1026; }

@@ -7,6 +7,9 @@ import type { Loadout } from './economy';
 
 export type Side = 'player' | 'enemy';
 
+/** Жест распознан, но заклинание не готово: перезарядка / мана / заряд сбит. */
+export type RejectKind = 'cooldown' | 'mana' | 'interrupted';
+
 export interface ShieldState {
   up: boolean;
   durability: number;
@@ -59,7 +62,7 @@ export type BattleEvent =
       combo?: number;
     }
   | { type: 'comboBreak'; combo: number }
-  | { type: 'reject'; spell: GestureId; reason: string }
+  | { type: 'reject'; spell: GestureId; reason: string; kind: RejectKind }
   | { type: 'hit'; target: Side; spell: SpellId; hpDamage: number; shieldDamage: number; blocked: boolean }
   | { type: 'shieldUp' | 'shieldDown' | 'shieldBreak' | 'shieldRestored'; side: Side }
   | { type: 'heal'; side: Side; amount: number }
@@ -175,16 +178,21 @@ export class Battle {
     } else {
       const readyAt = this.player.cooldowns[spell] ?? 0;
       if (this.t < readyAt) {
-        this.emit({ type: 'reject', spell, reason: `Перезарядка ${((readyAt - this.t) / 1000).toFixed(1)} с` });
+        this.emit({
+          type: 'reject',
+          spell,
+          kind: 'cooldown',
+          reason: `Перезарядка ${((readyAt - this.t) / 1000).toFixed(1)} с`,
+        });
         return false;
       }
       if (spell === 'fireball' && this.t < this.player.interruptedUntil) {
-        this.emit({ type: 'reject', spell, reason: 'Заряд сбит ветром!' });
+        this.emit({ type: 'reject', spell, kind: 'interrupted', reason: 'Заряд сбит ветром!' });
         return false;
       }
       const cost = def.mana * (staff.manaMul ?? 1);
       if (this.player.mana < cost) {
-        this.emit({ type: 'reject', spell, reason: 'Мало маны' });
+        this.emit({ type: 'reject', spell, kind: 'mana', reason: 'Мало маны' });
         return false;
       }
       this.player.mana -= cost;
@@ -260,8 +268,9 @@ export class Battle {
         this.emit({ type: 'cast', side: 'player', spell: 'heal', quality: 1, damage: 0 });
       } else if (!this.healRejected) {
         this.healRejected = true;
-        const reason = this.t < readyAt ? `Перезарядка ${((readyAt - this.t) / 1000).toFixed(1)} с` : 'Мало маны';
-        this.emit({ type: 'reject', spell: 'heal', reason });
+        const cooldown = this.t < readyAt;
+        const reason = cooldown ? `Перезарядка ${((readyAt - this.t) / 1000).toFixed(1)} с` : 'Мало маны';
+        this.emit({ type: 'reject', spell: 'heal', kind: cooldown ? 'cooldown' : 'mana', reason });
       }
     }
     if (!heal) {

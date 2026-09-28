@@ -10,6 +10,8 @@ import type { ConstraintResult, GestureId, GestureTemplate, TemplateScore } from
 
 export interface Hint {
   kind: 'context' | 'pose' | 'motion';
+  /** Причина провала для HUD: форма руки / движение / кадр / свет. */
+  category: FailCategory;
   gesture?: GestureId;
   lines: string[];
   /** Пальцы для красной подсветки на руке handIdx. */
@@ -18,6 +20,8 @@ export interface Hint {
   /** Стабильный ключ — чтобы UI не перерисовывался каждый кадр. */
   key: string;
 }
+
+export type FailCategory = 'shape' | 'motion' | 'frame' | 'light';
 
 export type GestureEvent =
   | {
@@ -407,12 +411,27 @@ export class GestureEngine {
     this.emit({ type: 'misfire', gesture: g, id: `${g}_motion_weak`, text, t: now });
     this.motionHint = {
       until: now + 1500,
-      hint: { kind: 'motion', gesture: g, lines: [text], fingers: [], handIdx: -1, key: `motion:${g}:${now}` },
+      hint: {
+        kind: 'motion',
+        category: 'motion',
+        gesture: g,
+        lines: [text],
+        fingers: [],
+        handIdx: -1,
+        key: `motion:${g}:${now}`,
+      },
     };
   }
 
   private buildHint(hands: HandFeatures[], best: TemplateScore | null, brightness: number, now: number): Hint | null {
-    const ctx = (text: string): Hint => ({ kind: 'context', lines: [text], fingers: [], handIdx: -1, key: `ctx:${text}` });
+    const ctx = (text: string, category: FailCategory = 'frame'): Hint => ({
+      kind: 'context',
+      category,
+      lines: [text],
+      fingers: [],
+      handIdx: -1,
+      key: `ctx:${text}`,
+    });
 
     if (hands.length === 0) {
       this.nm = null;
@@ -428,7 +447,7 @@ export class GestureEngine {
     if (maxPalm < C.tooFar) return ctx(CONTEXT.tooFar);
     // только по яркости кадра: уверенность MediaPipe в handedness — не качество детекции,
     // на кулаке и руке боком она штатно падает
-    if (brightness < C.lowBrightness) return ctx(CONTEXT.lowLight);
+    if (brightness < C.lowBrightness) return ctx(CONTEXT.lowLight, 'light');
 
     if (this.motionHint && this.motionHint.until > now) return this.motionHint.hint;
 
@@ -456,6 +475,8 @@ export class GestureEngine {
 
     return {
       kind: 'pose',
+      // нет второй руки — это про кадр, а не про форму ладони
+      category: failing.some((r) => r.id === 'two_hands') ? 'frame' : 'shape',
       gesture: best.id,
       lines: failing.map((r) => r.hint),
       fingers: failing.flatMap((r) => r.fingers),
