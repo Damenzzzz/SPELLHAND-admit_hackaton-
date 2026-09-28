@@ -359,3 +359,152 @@ body {
   .gesture-grid { grid-template-columns: repeat(2, 1fr); }
   .hint-line { font-size: 15px; }
 }
+
+/* --- бой --- */
+.battle {
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  overflow: hidden;
+}
+.battle-player { position: relative; }
+.battle-camera { position: absolute; inset: 0; }
+.battle-enemy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+}
+.vfx-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+
+.arena-forest .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #2d5a3a, #0e1f17 75%); }
+.arena-bridge .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #5a4a2d, #1a140c 75%); }
+.arena-cave .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #2d5270, #0b1826 75%); }
+.arena-swamp .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #3d5a3a, #121a0f 75%); }
+.arena-tower .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #5a3d70, #150c1f 75%); }
+.arena-cliff .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #4a5570, #0c1018 75%); }
+.arena-wastes .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #70603d, #1f180c 75%); }
+.arena-crypt .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #3d4a4a, #0b1010 75%); }
+.arena-abyss .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #702d2d, #1a0808 75%); }
+.arena-throne .battle-enemy { background: radial-gradient(ellipse at 50% 70%, #70602d, #1f0c2a 75%); }
+
+.hud { display: grid; gap: 6px; z-index: 5; }
+.hud-player { position: absolute; top: 12px; left: 12px; width: min(300px, 60%); }
+.hud-enemy { width: min(340px, 90%); }
+.enemy-name { font-size: 20px; font-weight: 700; text-align: center; }
+.enemy-name small { color: var(--muted); font-weight: 400; }
+.status { text-align: center; color: #8fe3ff; }
+
+.bar {
+  position: relative;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.bar-fill { position: absolute; inset: 0; transform-origin: left; transition: transform 0.15s; }
+.bar-label { position: relative; display: block; padding: 0 8px; font-size: 13px; line-height: 20px; font-weight: 600; text-shadow: 0 1px 2px #000; }
+.bar-hp .bar-fill { background: linear-gradient(90deg, #c8243a, #ff5a6a); }
+.bar-mana .bar-fill { background: linear-gradient(90deg, #2458c8, #5fa8ff); }
+.bar-shield .bar-fill { background: linear-gradient(90deg, #5f7fb8, #bcd6ff); }
+.bar-broken .bar-fill { background: #55556a; }
+.bar-enemy { height: 26px; }
+
+.enemy-portrait {
+  width: clamp(140px, 22vw, 240px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.3));
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  font-size: clamp(80px, 12vw, 140px);
+  animation: bob 2.4s ease-in-out infinite;
+}
+.enemy-casting { border-color: #ff7fd0; box-shadow: 0 0 40px rgba(255, 127, 208, 0.6); }
+@keyframes bob { 50% { transform: translateY(-8px); } }
+
+.telegraph { display: flex; flex-direction: column; align-items: center; gap: 6px; font-weight: 700; color: #ffb3e6; text-align: center; }
+.telegraph-rune {
+  --p: 0;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 30px;
+  background: conic-gradient(#ff7fd0 calc(var(--p) * 360deg), rgba(255, 255, 255, 0.1) 0);
+  animation: spin 1.2s linear infinite;
+}
+
+.spellbar {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+.spell-slot {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(11, 16, 38, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  font-size: 24px;
+}
+.spell-active { border-color: var(--gold); box-shadow: 0 0 14px var(--gold); }
+.spell-off .spell-icon { opacity: 0.35; }
+.spell-cd { position: absolute; font-size: 14px; font-weight: 800; }
+.spell-mana { position: absolute; bottom: -2px; right: 2px; font-size: 10px; color: #8fb8ff; }
+
+.charge-meter {
+  position: absolute;
+  top: 100px;
+  left: 12px;
+  width: min(300px, 60%);
+  height: 26px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 5;
+}
+.charge-fill { position: absolute; inset: 0; background: linear-gradient(90deg, #ff7a2f, #fff06a); transform-origin: left; }
+.charge-meter span { position: relative; padding: 0 8px; font-size: 12px; line-height: 26px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+
+.toasts { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); display: grid; gap: 6px; z-index: 8; pointer-events: none; }
+.battle-toast { padding: 8px 16px; border-radius: 10px; background: rgba(11, 16, 38, 0.9); font-weight: 700; text-align: center; animation: pop 0.2s ease-out; }
+.toast-bad { border: 1px solid var(--danger); color: #ffb3bb; }
+.toast-good { border: 1px solid var(--ok); color: #b3ffd2; }
+.toast-info { border: 1px solid var(--arcane); }
+
+.overlay-big {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 16, 38, 0.45);
+  pointer-events: none;
+}
+.countdown { font-size: clamp(64px, 14vw, 140px); font-weight: 900; color: var(--gold); text-shadow: 0 0 40px rgba(242, 195, 91, 0.6); animation: pulse 1s ease-in-out infinite; }
+.countdown.win { color: var(--ok); }
+.countdown.lose { color: var(--danger); }
+@keyframes pulse { 50% { transform: scale(1.08); } }
+
+@media (max-width: 760px), (orientation: portrait) {
+  .battle { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .battle-enemy { order: -1; gap: 8px; padding: 12px; }
+  .enemy-portrait { width: 110px; font-size: 70px; }
+  .spell-slot { width: 38px; height: 38px; font-size: 18px; }
+}
