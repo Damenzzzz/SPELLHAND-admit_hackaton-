@@ -18,6 +18,8 @@ export interface LevelDef {
   /** Шанс поставить щит в ответ на заряд игрока. */
   shieldReact: number;
   reward: number;
+  /** Чей портрет показать (для онлайна/призрака — картинка другого уровня). */
+  portraitOf?: number;
   boss?: {
     /** Щит отражает долю урона обратно. */
     reflect?: number;
@@ -42,3 +44,32 @@ export const LEVELS: LevelDef[] = [
 ];
 
 export const LEVEL_BY_ID = Object.fromEntries(LEVELS.map((l) => [l.id, l])) as Record<number, LevelDef>;
+
+/** «Призрак мага» — бот, если онлайн-соперник не найден за 20 с. */
+export const GHOST_LEVEL: LevelDef = {
+  id: 0,
+  name: 'Онлайн-арена',
+  enemyName: 'Призрак мага',
+  enemyPortrait: '👻',
+  portraitOf: 1,
+  arena: 'tower',
+  hp: 110,
+  dmgMul: 0.8,
+  spellWeights: { fireball: 1, ice: 0.8, lightning: 0.6, wind: 0.5 },
+  castInterval: 2200,
+  telegraphMs: 900,
+  shieldChance: 0.25,
+  shieldReact: 0.35,
+  reward: 100,
+};
+
+/** Онлайн-соперник: живой игрок, HP и щит приходят по сети. */
+export const onlineLevel = (nick: string): LevelDef => ({
+  ...GHOST_LEVEL,
+  enemyName: nick,
+  enemyPortrait: '🧙',
+  portraitOf: 10,
+  arena: 'throne',
+  hp: 100,
+  reward: 150,
+});

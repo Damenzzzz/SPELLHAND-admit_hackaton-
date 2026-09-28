@@ -94,6 +94,8 @@ export class Battle {
     readonly level: LevelDef,
     readonly loadout: Loadout,
     readonly rng: () => number = Math.random,
+    /** PvP: враг — живой игрок, его HP приходит по сети, бот выключен. */
+    readonly remote = false,
   ) {
     this.player = makeFighter(COMBAT.hp, {
       max: loadout.shield.durability,
@@ -283,8 +285,10 @@ export class Battle {
       due.forEach((p) => this.resolveHit(p));
     }
 
-    this.checkEnrage();
-    this.bot.tick(playerCharging);
+    if (!this.remote) {
+      this.checkEnrage();
+      this.bot.tick(playerCharging);
+    }
     this.checkEnd();
   }
 
@@ -292,6 +296,14 @@ export class Battle {
     if (this.over) return;
     const target = this.fighter(p.to);
     const sh = target.shield;
+
+    // PvP: попадание по сопернику считает его клиент — здесь только визуальная оценка
+    if (this.remote && p.to === 'enemy') {
+      const blocked = sh.up;
+      const hpDamage = Math.round(blocked ? (p.shieldDamage ? 0 : p.damage * p.pierce) : p.damage);
+      this.emit({ type: 'hit', target: 'enemy', spell: p.spell, hpDamage, shieldDamage: 0, blocked });
+      return;
+    }
     let hpDamage = 0;
     let shieldDamage = 0;
     const blocked = sh.up && !sh.brokenUntil;
@@ -342,10 +354,63 @@ export class Battle {
     this.emit({ type: 'heal', side: 'enemy', amount: enrage.heal });
   }
 
+  /** PvP: каст соперника летит в меня и разрешается моим щитом. */
+  remoteCast(c: {
+    spell: SpellId;
+    damage: number;
+    quality: number;
+    pierce: number;
+    shieldDamage: number | null;
+    slowFactor: number | null;
+    slowMs: number | null;
+    interrupt: boolean;
+    travelMs: number;
+  }) {
+    if (this.over) return;
+    if (c.spell === 'heal') {
+      this.emit({ type: 'cast', side: 'enemy', spell: 'heal', quality: c.quality, damage: 0 });
+      return;
+    }
+    const projectile = this.spawn({
+      spell: c.spell,
+      from: 'enemy',
+      to: 'player',
+      damage: c.damage,
+      quality: c.quality,
+      spawnT: this.t,
+      hitT: this.t + c.travelMs,
+      pierce: c.pierce,
+      shieldDamage: c.shieldDamage ?? undefined,
+      slow: c.slowFactor && c.slowMs ? { factor: c.slowFactor, ms: c.slowMs } : undefined,
+      interrupt: c.interrupt,
+    });
+    this.emit({ type: 'cast', side: 'enemy', spell: c.spell, quality: c.quality, damage: c.damage, projectile });
+  }
+
+  /** PvP: состояние соперника (он авторитетен по своему HP). */
+  applyRemoteState(s: { hp: number; maxHp: number; shieldUp: boolean; durability: number; shieldMax: number }) {
+    const e = this.enemy;
+    e.maxHp = s.maxHp;
+    e.hp = s.hp;
+    e.shield.max = s.shieldMax;
+    e.shield.durability = s.durability;
+    if (e.shield.up !== s.shieldUp) this.setShield('enemy', s.shieldUp);
+  }
+
+  /** Завершение по сигналу извне (соперник проиграл или вышел). */
+  forceEnd(winner: Side) {
+    if (this.over) return;
+    this.over = true;
+    this.winner = winner;
+    this.projectiles = [];
+    this.emit({ type: 'end', winner });
+  }
+
   private checkEnd() {
-    if (this.player.hp <= 0 || this.enemy.hp <= 0) {
+    const enemyDown = !this.remote && this.enemy.hp <= 0;
+    if (this.player.hp <= 0 || enemyDown) {
       this.over = true;
-      this.winner = this.enemy.hp <= 0 ? 'player' : 'enemy';
+      this.winner = enemyDown ? 'player' : 'enemy';
       this.projectiles = [];
       this.emit({ type: 'end', winner: this.winner });
     }

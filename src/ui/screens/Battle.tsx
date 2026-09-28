@@ -2,19 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { isDev } from '../../dev';
 import { Battle, type BattleEvent } from '../../game/combat';
 import { ASSETS } from '../../game/data/assets';
-import { LEVEL_BY_ID } from '../../game/data/levels';
+import { GHOST_LEVEL, LEVEL_BY_ID, onlineLevel } from '../../game/data/levels';
 import { SPELLS } from '../../game/data/spells';
-import { applyBattleResult, currentLoadout } from '../../game/economy';
+import { applyBattleResult, applyOnlineResult, currentLoadout } from '../../game/economy';
 import { sfx } from '../../game/sfx';
 import { BattleStats } from '../../game/stats';
 import { gestureEngine } from '../../gestures/matcher';
 import { TEMPLATES } from '../../gestures/templates';
 import type { SpellId } from '../../gestures/types';
+import { currentLink, setCurrentLink, STATE_EVERY_MS } from '../../net/pvp';
 import { CameraView } from '../../render/CameraView';
 import { coverBox } from '../../render/HandOverlay';
 import { SpellVfx, type VfxLayout } from '../../render/SpellVFX';
 import { useGame } from '../../store/gameStore';
 import { useGesture } from '../../store/gestureStore';
+import { useSave } from '../../store/saveStore';
 import { useVision } from '../../store/visionStore';
 import { AssetImg } from '../AssetImg';
 import { HintCard } from '../HintCard';
@@ -41,17 +43,19 @@ function Bar({ value, max, className, label }: { value: number; max: number; cla
 }
 
 export function BattleScreen() {
-  const levelId = useGame((s) => s.level);
+  const setup = useGame((s) => s.setup);
   const finishBattle = useGame((s) => s.finishBattle);
   const go = useGame((s) => s.go);
-  const level = LEVEL_BY_ID[levelId];
+  const online = setup.kind === 'online';
+  const level =
+    setup.kind === 'campaign' ? LEVEL_BY_ID[setup.level] : online ? onlineLevel(setup.opponentNick) : GHOST_LEVEL;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const camRef = useRef<HTMLDivElement>(null);
   const enemyRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const battleRef = useRef<Battle | null>(null);
-  if (!battleRef.current) battleRef.current = new Battle(level, currentLoadout());
+  if (!battleRef.current) battleRef.current = new Battle(level, currentLoadout(), Math.random, online);
   const battle = battleRef.current;
 
   const [phase, setPhase] = useState<Phase>('countdown');
@@ -66,6 +70,24 @@ export function BattleScreen() {
     let toastId = 0;
     let layout: VfxLayout | null = null;
     let endTimer = 0;
+    // онлайн: общий старт по часам инициатора; иначе обычные 3 с
+    const countdownMs = setup.kind === 'online' ? Math.max(500, setup.startAt - Date.now()) : COUNTDOWN_MS;
+    const link = online ? currentLink() : null;
+    let remoteEnded = false;
+    if (link) {
+      link.onCast = (c) => phaseNow === 'fight' && battle.remoteCast(c);
+      link.onState = (st) => battle.applyRemoteState(st);
+      link.onEnd = () => {
+        remoteEnded = true;
+        battle.forceEnd('player');
+      };
+      link.onLeave = () => {
+        if (battle.over) return;
+        remoteEnded = true;
+        toast('Соперник покинул бой — победа засчитана', 'good');
+        battle.forceEnd('player');
+      };
+    }
 
     const toast = (text: string, kind: Toast['kind'] = 'info') => {
       const id = ++toastId;
@@ -90,6 +112,20 @@ export function BattleScreen() {
       switch (e.type) {
         case 'cast':
           sfx.cast(e.spell);
+          if (link && e.side === 'player') {
+            const p = e.projectile;
+            link.sendCast({
+              spell: e.spell,
+              damage: p?.damage ?? 0,
+              quality: e.quality,
+              pierce: p?.pierce ?? 0,
+              shieldDamage: p?.shieldDamage ?? null,
+              slowFactor: p?.slow?.factor ?? null,
+              slowMs: p?.slow?.ms ?? null,
+              interrupt: p?.interrupt ?? false,
+              travelMs: p ? p.hitT - p.spawnT : 0,
+            });
+          }
           if (e.side === 'player' && e.spell === 'heal') stats.success('heal', useGesture.getState().snap?.quality ?? 1);
           if (e.side === 'player' && e.quality >= 0.95 && e.spell !== 'heal') toast('Идеальный жест! Максимальный урон', 'good');
           break;
@@ -130,10 +166,22 @@ export function BattleScreen() {
           const won = e.winner === 'player';
           if (won) sfx.victory();
           else sfx.defeat();
+          if (link && !won && !remoteEnded) link.sendDefeat();
           endTimer = window.setTimeout(() => {
             const sum = stats.summary();
-            const reward = applyBattleResult(level.id, won, sum.accuracy, battle.t);
-            finishBattle({ level: level.id, won, durationMs: battle.t, ...sum, ...reward });
+            const reward =
+              setup.kind === 'campaign'
+                ? applyBattleResult(level.id, won, sum.accuracy, battle.t)
+                : applyOnlineResult(won, sum.accuracy, level.reward, online);
+            finishBattle({
+              level: level.id,
+              mode: setup.kind,
+              opponent: level.enemyName,
+              won,
+              durationMs: battle.t,
+              ...sum,
+              ...reward,
+            });
           }, END_DELAY_MS);
           break;
         }
@@ -144,6 +192,7 @@ export function BattleScreen() {
     const start = performance.now();
     let last = start;
     let lastHud = 0;
+    let lastState = 0;
     let raf = 0;
 
     const computeLayout = (): VfxLayout | null => {
@@ -179,9 +228,9 @@ export function BattleScreen() {
       last = now;
 
       if (phaseNow === 'countdown') {
-        const left = Math.ceil((COUNTDOWN_MS - (now - start)) / 1000);
+        const left = Math.ceil((countdownMs - (now - start)) / 1000);
         setCountdown(left);
-        if (now - start >= COUNTDOWN_MS) {
+        if (now - start >= countdownMs) {
           phaseNow = 'fight';
           setPhase('fight');
         }
@@ -210,6 +259,21 @@ export function BattleScreen() {
         });
       }
 
+      // онлайн: я авторитетен по своему HP — рассылаю состояние каждые 250 мс
+      if (link && now - lastState >= STATE_EVERY_MS) {
+        lastState = now;
+        const p = battle.player;
+        link.sendState({
+          hp: p.hp,
+          maxHp: p.maxHp,
+          mana: p.mana,
+          shieldUp: p.shield.up,
+          durability: p.shield.durability,
+          shieldMax: p.shield.max,
+          staff: useSave.getState().equipped.staff,
+        });
+      }
+
       if (now - lastHud > 90) {
         lastHud = now;
         setHudTick((n) => n + 1);
@@ -227,8 +291,17 @@ export function BattleScreen() {
       offBattle();
       removeEventListener('keydown', esc);
       gestureEngine.setDevHold(null);
+      // StrictMode в dev пересоздаёт эффект — канал закрываем только при реальном уходе с экрана
+      setTimeout(() => {
+        if (link && useGame.getState().screen !== 'battle') {
+          link.close();
+          setCurrentLink(null);
+        }
+      }, 0);
     };
-  }, [battle, level, finishBattle, go]);
+    // setup/level/online неизменны на время жизни экрана
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [battle, finishBattle, go]);
 
   const { player, enemy, t } = battle;
   const snap = useGesture.getState().snap;
@@ -289,13 +362,17 @@ export function BattleScreen() {
         <div className="hud hud-enemy">
           <div className="enemy-name">
             {level.boss ? '👑 ' : ''}
-            {level.enemyName} <small>· ур. {level.id}</small>
+            {level.enemyName} <small>· {online ? 'онлайн' : level.id ? `ур. ${level.id}` : 'бот'}</small>
           </div>
           <Bar value={enemy.hp} max={enemy.maxHp} className="bar-hp bar-enemy" />
           {t < enemy.slowedUntil && <div className="status">❄️ замедлен</div>}
         </div>
         <div ref={enemyRef} className={`enemy-portrait ${telegraph ? 'enemy-casting' : ''}`}>
-          <AssetImg src={ASSETS.enemy(level.id)} fallback={level.enemyPortrait} className="enemy-img" />
+          <AssetImg
+            src={ASSETS.enemy(level.portraitOf ?? level.id)}
+            fallback={level.enemyPortrait}
+            className={`enemy-img ${setup.kind === 'ghost' ? 'enemy-ghost' : ''}`}
+          />
         </div>
         {telegraph && (
           <div className="telegraph">

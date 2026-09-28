@@ -35,6 +35,19 @@ export function applyBattleResult(level: number, won: boolean, accuracy: number,
   return { coins, firstWin, newRecord };
 }
 
+/** Онлайн/призрак: без рекордов кампании, награда за победу с бонусом за точность. */
+export function applyOnlineResult(won: boolean, accuracy: number, reward: number, live: boolean) {
+  const save = useSave.getState();
+  const coins = won ? Math.round(reward * (1 + 0.5 * Math.max(0, Math.min(1, accuracy)))) : 0;
+  updateSave({
+    coins: save.coins + coins,
+    online: live
+      ? { wins: save.online.wins + (won ? 1 : 0), losses: save.online.losses + (won ? 0 : 1) }
+      : save.online,
+  });
+  return { coins, firstWin: false, newRecord: false };
+}
+
 export function buyItem(id: string): boolean {
   const item = ITEM_BY_ID[id];
   const save = useSave.getState();

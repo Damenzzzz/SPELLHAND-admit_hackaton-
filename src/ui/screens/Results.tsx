@@ -19,8 +19,9 @@ function times(n: number) {
 export function Results() {
   const { lastResult: r, startBattle, go, openAcademy } = useGame();
   if (!r) return null;
+  const campaign = r.mode === 'campaign';
   const level = LEVEL_BY_ID[r.level];
-  const hasNext = r.won && r.level < LEVELS.length;
+  const hasNext = campaign && r.won && r.level < LEVELS.length;
   const trainGesture = r.topErrors[0]?.gesture;
 
   return (
@@ -28,7 +29,11 @@ export function Results() {
       <CoinBadge />
       <h1 className={`results-title ${r.won ? 'win' : 'lose'}`}>{r.won ? 'Победа!' : 'Поражение'}</h1>
       <p className="menu-sub">
-        Уровень {level.id} · {level.name} · {level.enemyName}
+        {campaign
+          ? `Уровень ${level.id} · ${level.name} · ${level.enemyName}`
+          : r.mode === 'online'
+            ? `Онлайн-дуэль с игроком «${r.opponent}»`
+            : 'Соперник не нашёлся — бой с Призраком мага'}
       </p>
 
       <div className="results-grid">
@@ -110,7 +115,11 @@ export function Results() {
             ⚔️ Уровень {r.level + 1}
           </DwellButton>
         )}
-        <DwellButton onSelect={() => startBattle(r.level)}>🔁 Ещё раз</DwellButton>
+        {campaign ? (
+          <DwellButton onSelect={() => startBattle(r.level)}>🔁 Ещё раз</DwellButton>
+        ) : (
+          <DwellButton onSelect={() => go('online')}>🔍 Новый соперник</DwellButton>
+        )}
         {trainGesture && (
           <DwellButton onSelect={() => openAcademy(trainGesture)}>
             📖 Тренировать {TEMPLATE_BY_ID[trainGesture].icon}

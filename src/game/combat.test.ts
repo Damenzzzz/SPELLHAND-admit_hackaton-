@@ -82,3 +82,26 @@ describe('бой', () => {
     expect(b.enemy.hp).toBe(139);
   });
 });
+
+describe('PvP-режим', () => {
+  it('входящий каст соперника бьёт меня, мой каст не меняет его HP локально', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded(), true);
+    b.remoteCast({ spell: 'fireball', damage: 30, quality: 1, pierce: 0, shieldDamage: null, slowFactor: null, slowMs: null, interrupt: false, travelMs: 300 });
+    step(b, 400);
+    expect(b.player.hp).toBe(70);
+    b.playerCast('fireball', 1, 1, 1);
+    step(b, 800);
+    expect(b.enemy.hp).toBe(b.enemy.maxHp);
+    b.applyRemoteState({ hp: 42, maxHp: 100, shieldUp: true, durability: 80, shieldMax: 100 });
+    expect(b.enemy.hp).toBe(42);
+    expect(b.enemy.shield.up).toBe(true);
+  });
+
+  it('бот в PvP не колдует, конец боя — по сигналу соперника', () => {
+    const b = new Battle(LEVEL_BY_ID[9], loadout, seeded(), true);
+    step(b, 6000);
+    expect(b.player.hp).toBe(100);
+    b.forceEnd('player');
+    expect(b.winner).toBe('player');
+  });
+});

@@ -16,6 +16,9 @@ export interface ErrorStat {
 
 export interface BattleResult {
   level: number;
+  mode: 'campaign' | 'online' | 'ghost';
+  /** Ник соперника (онлайн) или имя врага. */
+  opponent: string;
   won: boolean;
   durationMs: number;
   /** Успешные касты / все попытки (касты + near-miss + осечки). */
