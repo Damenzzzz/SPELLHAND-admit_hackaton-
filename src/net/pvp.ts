@@ -1,5 +1,5 @@
 import { joinRoom, type Room } from 'trystero';
-import type { SpellId } from '../gestures/types';
+import type { GestureId, SpellId } from '../gestures/types';
 import { APP_ID } from './config';
 import type { MatchFound } from './matchmaking';
 
@@ -38,10 +38,13 @@ export class PvpLink {
   onState: ((s: StateMsg) => void) | null = null;
   onEnd: ((winnerIsMe: boolean) => void) | null = null;
   onLeave: (() => void) | null = null;
+  /** Соперник взводит жест (или отпустил — null): видно его «телеграф», можно финтить. */
+  onForming: ((g: GestureId | null) => void) | null = null;
 
   private castA;
   private stateA;
   private endA;
+  private formingA;
   private closed = false;
 
   /** Резолвится временем старта (Date.now()-шкала) или null, если соперник не подключился. */
@@ -54,6 +57,8 @@ export class PvpLink {
     this.castA = this.room.makeAction<CastMsg>('cast');
     this.stateA = this.room.makeAction<StateMsg>('state');
     this.endA = this.room.makeAction<{ loser: string }>('end');
+    this.formingA = this.room.makeAction<{ g: GestureId | null }>('forming');
+    this.formingA.onMessage = ({ g }) => this.onForming?.(g);
 
     this.castA.onMessage = (c) => this.onCast?.(c);
     this.stateA.onMessage = (s) => this.onState?.(s);
@@ -86,6 +91,10 @@ export class PvpLink {
 
   sendState(s: StateMsg) {
     if (!this.closed) void this.stateA.send(s);
+  }
+
+  sendForming(g: GestureId | null) {
+    if (!this.closed) void this.formingA.send({ g });
   }
 
   /** Я проиграл — сообщаем сопернику. */

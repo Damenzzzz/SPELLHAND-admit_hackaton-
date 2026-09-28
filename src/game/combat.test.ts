@@ -310,3 +310,20 @@ describe('жесты телом в бою', () => {
     expect(b.meditate()).toBe(false);
   });
 });
+
+describe('бот уклоняется', () => {
+  it('на поздних уровнях бот может уклониться от огненного шара, но не от молнии', () => {
+    const always = () => 0; // rng = 0 → шанс всегда срабатывает
+    const b = new Battle(LEVEL_BY_ID[10], loadout, always);
+    const ev: string[] = [];
+    b.on((e) => e.type === 'enemyDodged' && ev.push(e.spell));
+    b.playerCast('fireball', 0.9, 1, 1);
+    step(b, 700);
+    expect(ev).toEqual(['fireball']);
+    expect(b.enemy.hp).toBe(b.enemy.maxHp);
+    b.player.mana = 100;
+    b.playerCast('lightning', 0.9, 1, 1);
+    step(b, 200);
+    expect(b.enemy.hp).toBeLessThan(b.enemy.maxHp);
+  });
+});

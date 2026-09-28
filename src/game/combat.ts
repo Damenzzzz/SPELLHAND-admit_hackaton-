@@ -87,6 +87,7 @@ export type BattleEvent =
   | { type: 'burn'; side: Side; on: boolean }
   | { type: 'blownAway'; count: number }
   | { type: 'dodge' }
+  | { type: 'enemyDodged'; spell: SpellId }
   | { type: 'dodged'; spell: SpellId }
   | { type: 'meditate'; mana: number }
   | { type: 'hit'; target: Side; spell: SpellId; hpDamage: number; shieldDamage: number; blocked: boolean }
@@ -538,6 +539,18 @@ export class Battle {
     let hpDamage = 0;
     let shieldDamage = 0;
     const blocked = sh.up && !sh.brokenUntil;
+
+    // бот уклоняется от снарядов игрока (кроме мгновенной молнии и рун-тюрьмы)
+    if (
+      p.to === 'enemy' &&
+      !this.remote &&
+      !p.freezeMs &&
+      p.spell !== 'lightning' &&
+      this.rng() < (this.level.dodgeChance ?? 0)
+    ) {
+      this.emit({ type: 'enemyDodged', spell: p.spell });
+      return;
+    }
 
     // уклонение: снаряд пролетает мимо
     if (p.to === 'player' && this.t <= this.dodgeUntil) {

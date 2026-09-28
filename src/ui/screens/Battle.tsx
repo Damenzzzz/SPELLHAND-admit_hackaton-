@@ -13,7 +13,7 @@ import { sfx } from '../../game/sfx';
 import { BattleStats } from '../../game/stats';
 import { gestureEngine } from '../../gestures/matcher';
 import { TEMPLATES } from '../../gestures/templates';
-import type { SpellId } from '../../gestures/types';
+import type { GestureId, SpellId } from '../../gestures/types';
 import { currentLink, setCurrentLink, STATE_EVERY_MS } from '../../net/session';
 import { CameraView } from '../../render/CameraView';
 import { coverBox } from '../../render/HandOverlay';
@@ -77,6 +77,7 @@ export function BattleScreen() {
   const [phase, setPhase] = useState<Phase>('countdown');
   const [countdown, setCountdown] = useState(3);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [remoteForming, setRemoteForming] = useState<GestureId | null>(null);
   const [, setHudTick] = useState(0);
 
   useEffect(() => {
@@ -98,6 +99,7 @@ export function BattleScreen() {
         remoteEnded = true;
         battle.forceEnd('player');
       };
+      link.onForming = (g) => setRemoteForming(g);
       link.onLeave = () => {
         if (battle.over) return;
         remoteEnded = true;
@@ -186,6 +188,9 @@ export function BattleScreen() {
           break;
         case 'dodge':
           sfx.cast('wind');
+          break;
+        case 'enemyDodged':
+          toast(`${level.enemyName} уклонился!`, 'info');
           break;
         case 'dodged':
           toast('🌀 Уклонение! Снаряд мимо', 'good');
@@ -299,6 +304,7 @@ export function BattleScreen() {
     let last = start;
     let lastHud = 0;
     let lastState = 0;
+    let lastForming: GestureId | null = null;
     let raf = 0;
 
     const computeLayout = (): VfxLayout | null => {
@@ -345,6 +351,11 @@ export function BattleScreen() {
       const snap = useGesture.getState().snap;
       const active = snap?.active ?? null;
       if (phaseNow === 'fight') {
+        // PvP: сообщаем, какой жест взводим — соперник видит «телеграф» (на этом строятся финты)
+        if (link && active !== lastForming) {
+          lastForming = active;
+          link.sendForming(active);
+        }
         const pose = usePose.getState();
         battle.setPlayerHolds(active === 'shield', active === 'heal', pose.active && pose.state.crossed);
         battle.tick(dt, active === 'fireball' || active === 'lightning');
@@ -488,6 +499,14 @@ export function BattleScreen() {
             className={`enemy-img ${setup.kind === 'ghost' ? 'enemy-ghost' : ''}`}
           />
         </div>
+        {online && remoteForming && remoteForming !== 'shield' && (
+          <div className="telegraph">
+            <div className="telegraph-rune">
+              <SpellIcon id={remoteForming} />
+            </div>
+            <span>Соперник готовит: {TEMPLATES.find((x) => x.id === remoteForming)?.name}</span>
+          </div>
+        )}
         {telegraph && (
           <div className="telegraph">
             <div
