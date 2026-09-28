@@ -269,6 +269,7 @@ body {
 }
 
 .sound-badge {
+  pointer-events: none;
   position: fixed;
   top: 12px;
   left: 50%;
@@ -648,3 +649,17 @@ img.shop-icon { width: 110px; height: 110px; object-fit: contain; }
 .menu-buttons { grid-template-columns: 1fr 1fr; width: min(640px, 100%); }
 .menu-buttons .btn-primary { grid-column: span 2; }
 .menu .logo-img { width: min(460px, 80vw); }
+
+/* --- телефон --- */
+@media (max-width: 760px), (orientation: portrait) {
+  .calibration { grid-template-rows: minmax(45%, 1fr) auto; }
+  .calibration-panel .logo-img { display: none; }
+  .calibration-panel h2 { font-size: 18px; }
+  .calibration-hint { padding: 8px 10px; font-size: 14px; }
+  .dev-panel { width: 200px; font-size: 9px; opacity: 0.85; }
+  .dev-panel .dev-constraints { display: none; }
+  .dev-row { grid-template-columns: 70px 1fr 28px; }
+  .menu-buttons .dwell-btn { font-size: 17px; min-height: 58px; }
+  .hud-player { width: calc(100% - 24px); }
+  .sound-badge { font-size: 11px; max-width: 70vw; text-align: center; }
+}
