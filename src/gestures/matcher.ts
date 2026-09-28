@@ -30,6 +30,8 @@ export type GestureEvent =
       shard: number;
       handIdx: number;
       t: number;
+      /** Самое слабое ограничение позы на момент каста (для «Слабо: …»). */
+      weakest?: { id: string; hint: string; score: number };
     }
   | { type: 'misfire'; gesture: GestureId; id: string; text: string; t: number }
   | {
@@ -125,6 +127,7 @@ export class GestureEngine {
   private keys: string[] = [];
   private listeners = new Set<Listener>();
   private identity = new HandIdentity();
+  private lastScores: Record<GestureId, TemplateScore> | null = null;
 
   // стабилизация
   private candidate: GestureId | null = null;
@@ -198,6 +201,7 @@ export class GestureEngine {
     const scores = {} as Record<GestureId, TemplateScore>;
     for (const tpl of TEMPLATES) scores[tpl.id] = evalTemplate(tpl, hands);
     applyPersonal(scores, hands);
+    this.lastScores = scores;
 
     // лучший шаблон; двуручные в приоритете, если распознаны (две ладони = ветер/лечение, а не 2 огненных шара)
     const all = Object.values(scores).sort((a, b) => b.score - a.score);
@@ -297,6 +301,8 @@ export class GestureEngine {
   private cast(g: GestureId, handKey: string, keys: string[], now: number, quality: number, charge: number) {
     this.weak = null;
     const shard = g === 'ice' ? ++this.shards : 1;
+    const results = this.lastScores?.[g]?.results ?? [];
+    const w = results.reduce<(typeof results)[number] | null>((a, r) => (!a || r.score < a.score ? r : a), null);
     this.emit({
       type: 'cast',
       gesture: g,
@@ -305,6 +311,7 @@ export class GestureEngine {
       shard,
       handIdx: Math.max(0, keys.indexOf(handKey)),
       t: now,
+      weakest: w ? { id: w.id, hint: w.hint, score: w.score } : undefined,
     });
     const seriesDone = g !== 'ice' || this.shards >= C.maxShards;
     if (seriesDone) {

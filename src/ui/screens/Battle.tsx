@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { isDev } from '../../dev';
 import { Battle, type BattleEvent } from '../../game/combat';
 import { ASSETS } from '../../game/data/assets';
+import { gradeOf } from '../../game/data/grades';
 import { GHOST_LEVEL, LEVEL_BY_ID, onlineLevel } from '../../game/data/levels';
 import { SPELLS } from '../../game/data/spells';
 import { applyBattleResult, applyOnlineResult, currentLoadout } from '../../game/economy';
@@ -96,14 +97,17 @@ export function BattleScreen() {
       setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 1600);
     };
 
+    let lastWeakest: string | null = null;
     const offGesture = gestureEngine.on((e) => {
       if (phaseNow !== 'fight') return;
       if (e.type === 'cast') {
         if (e.gesture === 'shield' || e.gesture === 'heal') return;
+        lastWeakest = e.weakest && e.weakest.score < 0.9 ? e.weakest.hint : null;
         const ok = battle.playerCast(e.gesture, e.quality, e.charge, e.shard);
         if (ok && e.shard === 1) stats.success(e.gesture, e.quality);
       } else {
         stats.onGesture(e);
+        battle.breakCombo();
       }
     });
 
@@ -128,10 +132,21 @@ export function BattleScreen() {
             });
           }
           if (e.side === 'player' && e.spell === 'heal') stats.success('heal', useGesture.getState().snap?.quality ?? 1);
-          if (e.side === 'player' && e.quality >= 0.95 && e.spell !== 'heal') toast('Идеальный жест! Максимальный урон', 'good');
+          if (e.side === 'player' && e.grade && layout) {
+            const g = gradeOf(e.quality);
+            vfx.floatText(
+              { x: layout.playerHand.x, y: layout.playerHand.y - 40 },
+              `${g.label}${e.combo && e.combo > 1 ? ` ×${e.combo}` : ''}`,
+              g.color,
+            );
+            if (g.id === 'weak' && lastWeakest) toast(`Слабо: ${lastWeakest.toLowerCase()}`, 'bad');
+          }
           break;
         case 'telegraph':
           sfx.enemyTelegraph();
+          break;
+        case 'comboBreak':
+          if (e.combo >= 3) toast(`Серия ×${e.combo} прервана`, 'info');
           break;
         case 'hit':
           if (e.blocked && e.target === 'player') stats.shieldBlocked(gestureQuality());

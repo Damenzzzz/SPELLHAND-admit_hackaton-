@@ -20,7 +20,8 @@ describe('бой', () => {
     b.player.cooldowns = {};
     b.playerCast('fireball', 0.5, 1, 1);
     const [strong, weak] = b.projectiles;
-    expect(strong.damage).toBe(35);
+    // идеальный жест: 35 × 1.0 × PERFECT 1.2
+    expect(strong.damage).toBe(42);
     expect(weak.damage).toBeLessThan(strong.damage);
   });
 
@@ -103,5 +104,35 @@ describe('PvP-режим', () => {
     expect(b.player.hp).toBe(100);
     b.forceEnd('player');
     expect(b.winner).toBe('player');
+  });
+});
+
+describe('оценки и комбо', () => {
+  it('серия удачных кастов растит урон, «слабо» её обрывает', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    const events: string[] = [];
+    b.on((e) => e.type === 'comboBreak' && events.push('break'));
+    const cast = (q: number) => {
+      b.player.mana = 100;
+      b.player.cooldowns = {};
+      b.playerCast('fireball', q, 1, 1);
+      return b.projectiles.at(-1)!.damage;
+    };
+    const first = cast(0.95);
+    cast(0.95);
+    const third = cast(0.95);
+    expect(third).toBeGreaterThan(first);
+    expect(b.combo).toBe(3);
+    cast(0.6);
+    expect(b.combo).toBe(0);
+    expect(events).toEqual(['break']);
+  });
+
+  it('ошибка жеста (near-miss) обрывает серию', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    b.playerCast('fireball', 0.95, 1, 1);
+    expect(b.combo).toBe(1);
+    b.breakCombo();
+    expect(b.combo).toBe(0);
   });
 });

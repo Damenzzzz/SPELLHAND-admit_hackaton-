@@ -1,6 +1,7 @@
 import type { GestureId, SpellId } from '../gestures/types';
 import { BotAI } from './ai';
 import type { LevelDef } from './data/levels';
+import { COMBO, gradeOf, type GradeId } from './data/grades';
 import { COMBAT, SPELLS } from './data/spells';
 import type { Loadout } from './economy';
 
@@ -46,7 +47,18 @@ export interface Projectile {
 }
 
 export type BattleEvent =
-  | { type: 'cast'; side: Side; spell: SpellId; quality: number; damage: number; projectile?: Projectile }
+  | {
+      type: 'cast';
+      side: Side;
+      spell: SpellId;
+      quality: number;
+      damage: number;
+      projectile?: Projectile;
+      /** Оценка жеста и длина серии (только для игрока). */
+      grade?: GradeId;
+      combo?: number;
+    }
+  | { type: 'comboBreak'; combo: number }
   | { type: 'reject'; spell: GestureId; reason: string }
   | { type: 'hit'; target: Side; spell: SpellId; hpDamage: number; shieldDamage: number; blocked: boolean }
   | { type: 'shieldUp' | 'shieldDown' | 'shieldBreak' | 'shieldRestored'; side: Side }
@@ -124,12 +136,23 @@ export class Battle {
   }
 
   /** Итоговый урон игрока: база × качество жеста × посох. */
+  /** Серия удачных кастов подряд (обрывается «слабым» кастом или ошибкой жеста). */
+  combo = 0;
+
+  /** Итоговый урон: база × (0.6 + 0.4·качество) × оценка × комбо × посох. */
   private playerDamage(spell: SpellId, quality: number, charge: number) {
     const def = SPELLS[spell];
     const base = def.damage[0] + (def.damage[1] - def.damage[0]) * charge;
     const staff = this.loadout.staff;
     const mul = (staff.spellMul?.[spell] ?? 1) * (staff.allMul ?? 1);
-    return Math.round(base * (COMBAT.qualityBase + COMBAT.qualityK * quality) * mul);
+    const combo = 1 + COMBO.stepBonus * Math.min(this.combo, COMBO.maxSteps);
+    return Math.round(base * (COMBAT.qualityBase + COMBAT.qualityK * quality) * gradeOf(quality).mul * combo * mul);
+  }
+
+  /** Near-miss или осечка жеста обрывают серию. */
+  breakCombo() {
+    if (this.combo > 0) this.emit({ type: 'comboBreak', combo: this.combo });
+    this.combo = 0;
   }
 
   private spawn(p: Omit<Projectile, 'id'>): Projectile {
@@ -170,6 +193,11 @@ export class Battle {
     }
 
     const damage = this.playerDamage(spell, quality, charge);
+    const grade = gradeOf(quality).id;
+    if (!iceFollowUp) {
+      if (grade === 'weak') this.breakCombo();
+      else this.combo++;
+    }
     const pierce = spell === 'lightning' ? (staff.lightningPierce ?? def.shieldPierce) : def.shieldPierce;
     const slow = def.slow ? { ...def.slow, ms: def.slow.ms + (staff.slowBonusMs ?? 0) } : undefined;
     const projectile = this.spawn({
@@ -185,7 +213,7 @@ export class Battle {
       slow,
       interrupt: def.interrupt,
     });
-    this.emit({ type: 'cast', side: 'player', spell, quality, damage, projectile });
+    this.emit({ type: 'cast', side: 'player', spell, quality, damage, projectile, grade, combo: this.combo });
     return true;
   }
 
