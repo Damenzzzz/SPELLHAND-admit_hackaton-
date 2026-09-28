@@ -135,3 +135,19 @@ describe('движение', () => {
     expect(events.find((e) => e.type === 'cast')).toMatchObject({ gesture: 'lightning' });
   });
 });
+
+describe('баги из ревью', () => {
+  it('низкая уверенность handedness на кулаке не даёт «мало света» и не мешает щиту', () => {
+    const fist = { ...hand({ ext: FIST }), score: 0.3 };
+    const snap = run(new GestureEngine(), hold([fist]));
+    expect(snap.active).toBe('shield');
+    expect(snap.hint).toBeNull();
+  });
+
+  it('«мало света» — только по яркости кадра', () => {
+    const engine = new GestureEngine();
+    let snap = engine.update([hand({ ext: { ...OPEN, ring: 0 } })], ASPECT, 30, 0);
+    for (let i = 1; i < 10; i++) snap = engine.update([hand({ ext: { ...OPEN, ring: 0 } })], ASPECT, 30, i * FRAME_MS);
+    expect(snap.hint?.lines[0]).toBe('Мало света — повернись к окну или лампе');
+  });
+});

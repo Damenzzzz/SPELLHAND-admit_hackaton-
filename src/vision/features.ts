@@ -26,7 +26,8 @@ export interface HandFeatures {
   handedness: Handedness;
   /** Настоящая рука игрока (MediaPipe метит для зеркального кадра, мы подаём незеркальный). */
   isRealRight: boolean;
-  confidence: number;
+  /** Уверенность MediaPipe в метке Left/Right — НЕ качество детекции. */
+  handednessScore: number;
   /** dist(0, 9) — нормализатор всех расстояний. */
   palmSize: number;
   /** 0 — согнут, 1 — выпрямлен. */
@@ -107,7 +108,7 @@ function fingerExtension(p: Vec3[], finger: FingerId): number {
 export function computeFeatures(
   raw: Vec3[],
   handedness: Handedness,
-  confidence: number,
+  handednessScore: number,
   aspect: number,
 ): HandFeatures {
   const pts = raw.map((p) => ({ x: p.x * aspect, y: p.y, z: p.z * aspect }));
@@ -133,7 +134,7 @@ export function computeFeatures(
     raw,
     handedness,
     isRealRight,
-    confidence,
+    handednessScore,
     palmSize,
     extension,
     palmFacing,

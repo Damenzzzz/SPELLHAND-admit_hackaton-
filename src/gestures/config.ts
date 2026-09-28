@@ -42,7 +42,6 @@ export const GESTURE_CONFIG = {
   /** palmSize в долях высоты кадра. */
   tooClose: 0.42,
   tooFar: 0.07,
-  lowConfidence: 0.6,
   lowBrightness: 45,
 
   /** Заряд огненного шара: от holdMin до holdMax удержания. */

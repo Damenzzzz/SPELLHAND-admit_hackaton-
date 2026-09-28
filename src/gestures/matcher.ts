@@ -394,16 +394,21 @@ export class GestureEngine {
       this.nm = null;
       return ctx(CONTEXT.noHands);
     }
+    // поза взведена (например, поднят щит) — советы по обстановке ей не мешают
+    if (this.active) {
+      this.nm = null;
+      return null;
+    }
     const maxPalm = Math.max(...hands.map((h) => h.palmSize));
     if (maxPalm > C.tooClose) return ctx(CONTEXT.tooClose);
     if (maxPalm < C.tooFar) return ctx(CONTEXT.tooFar);
-    if (brightness < C.lowBrightness || Math.min(...hands.map((h) => h.confidence)) < C.lowConfidence) {
-      return ctx(CONTEXT.lowLight);
-    }
+    // только по яркости кадра: уверенность MediaPipe в handedness — не качество детекции,
+    // на кулаке и руке боком она штатно падает
+    if (brightness < C.lowBrightness) return ctx(CONTEXT.lowLight);
 
     if (this.motionHint && this.motionHint.until > now) return this.motionHint.hint;
 
-    if (this.active || !best || best.score < C.nearMiss || best.score >= C.recognize) {
+    if (!best || best.score < C.nearMiss || best.score >= C.recognize) {
       this.nm = null;
       return null;
     }
