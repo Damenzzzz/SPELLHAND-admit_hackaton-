@@ -17,7 +17,6 @@ const offVision = useVision.subscribe((v) => {
     preloadAssets();
   }
 });
-setTimeout(preloadAssets, 8000);
 
 // звук разрешается браузером только после любого клика/клавиши
 for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
