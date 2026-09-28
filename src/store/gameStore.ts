@@ -12,7 +12,8 @@ export type Screen =
   | 'shop'
   | 'online'
   | 'leaderboard'
-  | 'personal';
+  | 'personal'
+  | 'coach';
 
 export type BattleSetup =
   | { kind: 'campaign'; level: number }

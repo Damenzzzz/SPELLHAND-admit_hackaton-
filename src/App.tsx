@@ -8,6 +8,7 @@ import { Academy } from './ui/screens/Academy';
 import { BattleScreen } from './ui/screens/Battle';
 import { Calibration } from './ui/screens/Calibration';
 import { Campaign } from './ui/screens/Campaign';
+import { Coach } from './ui/screens/Coach';
 import { Leaderboard } from './ui/screens/Leaderboard';
 import { Menu } from './ui/screens/Menu';
 import { Online } from './ui/screens/Online';
@@ -46,6 +47,7 @@ export function App() {
       {screen === 'online' && <Online />}
       {screen === 'leaderboard' && <Leaderboard />}
       {screen === 'personal' && <PersonalCalibration />}
+      {screen === 'coach' && <Coach />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>

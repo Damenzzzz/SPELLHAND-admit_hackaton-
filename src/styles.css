@@ -685,3 +685,20 @@ img.shop-icon { width: 110px; height: 110px; object-fit: contain; }
   pointer-events: none;
 }
 .fail-badge { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; font-size: 18px; color: #0b1026; }
+
+/* --- тренер --- */
+.coach .shell-content { justify-content: flex-start; overflow-y: auto; }
+.coach-right { display: flex; flex-direction: column; align-items: center; }
+.trend { margin: 0 0 6px; }
+.trend .up { color: var(--ok); }
+.trend .down { color: var(--danger); }
+.acc-chart { display: block; }
+.acc-grid { stroke: rgba(255, 255, 255, 0.1); }
+.acc-axis { fill: var(--muted); font-size: 10px; }
+.acc-line { fill: none; stroke: var(--gold); stroke-width: 2.5; }
+.acc-dot { fill: var(--gold); }
+.acc-drill, .acc-rush { fill: var(--arcane); }
+.acc-online { fill: var(--ok); }
+.heatmap { margin: 0; text-align: center; }
+.heatmap figcaption { color: var(--muted); }
+.heatmap-count { fill: #fff; font-size: 13px; font-weight: 700; }
