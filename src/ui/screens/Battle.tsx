@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { isDev } from '../../dev';
 import { Battle, type BattleEvent } from '../../game/combat';
 import { ASSETS } from '../../game/data/assets';
+import { dailyChallenge, dailyScore } from '../../game/data/daily';
 import { gradeOf } from '../../game/data/grades';
 import { GHOST_LEVEL, LEVEL_BY_ID, onlineLevel } from '../../game/data/levels';
 import { SPELLS } from '../../game/data/spells';
@@ -18,7 +19,7 @@ import { coverBox } from '../../render/HandOverlay';
 import { SpellVfx, type VfxLayout } from '../../render/SpellVFX';
 import { useGame } from '../../store/gameStore';
 import { useGesture } from '../../store/gestureStore';
-import { useSave } from '../../store/saveStore';
+import { updateSave, useSave } from '../../store/saveStore';
 import { useVision } from '../../store/visionStore';
 import { AssetImg } from '../AssetImg';
 import { FAIL_BADGE } from '../failCategories';
@@ -50,15 +51,25 @@ export function BattleScreen() {
   const finishBattle = useGame((s) => s.finishBattle);
   const go = useGame((s) => s.go);
   const online = setup.kind === 'online';
+  const [daily] = useState(() => dailyChallenge());
   const level =
-    setup.kind === 'campaign' ? LEVEL_BY_ID[setup.level] : online ? onlineLevel(setup.opponentNick) : GHOST_LEVEL;
+    setup.kind === 'campaign'
+      ? LEVEL_BY_ID[setup.level]
+      : online
+        ? onlineLevel(setup.opponentNick)
+        : setup.kind === 'daily'
+          ? daily.level
+          : GHOST_LEVEL;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const camRef = useRef<HTMLDivElement>(null);
   const enemyRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const battleRef = useRef<Battle | null>(null);
-  if (!battleRef.current) battleRef.current = new Battle(level, currentLoadout(), Math.random, online);
+  if (!battleRef.current) {
+    battleRef.current = new Battle(level, currentLoadout(), Math.random, online);
+    if (setup.kind === 'daily') battleRef.current.allowedSpells = daily.modifier.allowed ?? null;
+  }
   const battle = battleRef.current;
 
   const [phase, setPhase] = useState<Phase>('countdown');
@@ -198,6 +209,12 @@ export function BattleScreen() {
               setup.kind === 'campaign'
                 ? applyBattleResult(level.id, won, sum.accuracy, battle.t)
                 : applyOnlineResult(won, sum.accuracy, level.reward, online);
+            const score = setup.kind === 'daily' ? dailyScore(won, sum.accuracy, battle.t) : undefined;
+            if (score !== undefined) {
+              updateSave((sv) =>
+                sv.dailyBest?.id === daily.id && sv.dailyBest.score >= score ? {} : { dailyBest: { id: daily.id, score } },
+              );
+            }
             recordSession({ mode: setup.kind, ...sum });
             // в глобальный лидерборд — фоном, без ожидания (dev-сессии и тесты не публикуем)
             if (!isDev) void import('../../net/leaderboard')
@@ -208,6 +225,8 @@ export function BattleScreen() {
                   level: level.id,
                   won,
                   accuracy: sum.accuracy,
+                  score,
+                  day: setup.kind === 'daily' ? daily.id : undefined,
                 }),
               )
               .catch(() => {});
@@ -215,6 +234,7 @@ export function BattleScreen() {
               level: level.id,
               mode: setup.kind,
               opponent: level.enemyName,
+              dailyScore: score,
               won,
               durationMs: battle.t,
               ...sum,

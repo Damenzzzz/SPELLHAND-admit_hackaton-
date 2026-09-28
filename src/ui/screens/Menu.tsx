@@ -28,6 +28,7 @@ export function Menu() {
         <DwellButton onSelect={() => go('leaderboard')}>🏆 Лидерборд</DwellButton>
         <DwellButton onSelect={() => go('coach')}>📈 Тренер</DwellButton>
         <DwellButton onSelect={() => go('rush')}>⚡ Разминка</DwellButton>
+        <DwellButton onSelect={() => go('daily')}>📅 Испытание дня</DwellButton>
         <DwellButton onSelect={() => go('calibration')}>🎯 Калибровка</DwellButton>
       </nav>
     </ScreenShell>

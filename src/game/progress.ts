@@ -7,7 +7,7 @@ import type { BattleResult } from './stats';
 /** Одна сессия (бой, разминка, упражнение) в истории прогресса. */
 export interface SessionRecord {
   at: number;
-  mode: 'campaign' | 'online' | 'ghost' | 'rush' | 'drill';
+  mode: 'campaign' | 'online' | 'ghost' | 'daily' | 'rush' | 'drill';
   accuracy: number;
   perSpell: Partial<Record<GestureId, { count: number; avgQuality: number }>>;
   errors: Record<string, number>;

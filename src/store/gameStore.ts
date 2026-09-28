@@ -14,13 +14,15 @@ export type Screen =
   | 'leaderboard'
   | 'personal'
   | 'coach'
-  | 'rush';
+  | 'rush'
+  | 'daily';
 
 export type BattleSetup =
   | { kind: 'campaign'; level: number }
   /** startAt — общее время старта (Date.now-шкала), назначенное инициатором. */
   | { kind: 'online'; opponentNick: string; startAt: number }
-  | { kind: 'ghost' };
+  | { kind: 'ghost' }
+  | { kind: 'daily' };
 
 interface GameState {
   screen: Screen;
@@ -34,6 +36,7 @@ interface GameState {
   startBattle: (level: number) => void;
   startOnline: (opponentNick: string, startAt: number) => void;
   startGhost: () => void;
+  startDaily: () => void;
   finishBattle: (result: BattleResult) => void;
   openAcademy: (g: GestureId | null) => void;
 }
@@ -48,6 +51,7 @@ export const useGame = create<GameState>((set) => ({
   startBattle: (level) => set({ screen: 'battle', level, setup: { kind: 'campaign', level } }),
   startOnline: (opponentNick, startAt) => set({ screen: 'battle', setup: { kind: 'online', opponentNick, startAt } }),
   startGhost: () => set({ screen: 'battle', setup: { kind: 'ghost' } }),
+  startDaily: () => set({ screen: 'battle', setup: { kind: 'daily' } }),
   finishBattle: (lastResult) => set({ screen: 'results', lastResult }),
   openAcademy: (academyGesture) => set({ screen: 'academy', academyGesture }),
 }));

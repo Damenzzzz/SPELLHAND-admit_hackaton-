@@ -9,6 +9,7 @@ import { BattleScreen } from './ui/screens/Battle';
 import { Calibration } from './ui/screens/Calibration';
 import { Campaign } from './ui/screens/Campaign';
 import { Coach } from './ui/screens/Coach';
+import { Daily } from './ui/screens/Daily';
 import { Leaderboard } from './ui/screens/Leaderboard';
 import { Menu } from './ui/screens/Menu';
 import { Online } from './ui/screens/Online';
@@ -50,6 +51,7 @@ export function App() {
       {screen === 'personal' && <PersonalCalibration />}
       {screen === 'coach' && <Coach />}
       {screen === 'rush' && <Rush />}
+      {screen === 'daily' && <Daily />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>

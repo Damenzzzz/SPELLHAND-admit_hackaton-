@@ -16,7 +16,9 @@ export interface ErrorStat {
 
 export interface BattleResult {
   level: number;
-  mode: 'campaign' | 'online' | 'ghost';
+  mode: 'campaign' | 'online' | 'ghost' | 'daily';
+  /** Очки испытания дня. */
+  dailyScore?: number;
   /** Ник соперника (онлайн) или имя врага. */
   opponent: string;
   won: boolean;

@@ -13,7 +13,11 @@ const SK_KEY = 'spellhand.nostr.sk';
 
 export type ResultRow = {
   nickname: string;
-  mode: 'campaign' | 'online' | 'ghost';
+  mode: 'campaign' | 'online' | 'ghost' | 'daily';
+  /** Очки испытания дня (только mode = 'daily'). */
+  score?: number;
+  /** Дата испытания YYYY-MM-DD. */
+  day?: string;
   level: number;
   won: boolean;
   accuracy: number;
@@ -59,6 +63,7 @@ export async function submitResult(r: Omit<ResultRow, 'created_at'>): Promise<vo
       tags: [
         ['d', `spellhand:${created_at}:${Math.random().toString(36).slice(2, 8)}`],
         ['t', TAG],
+        ...(r.day ? [['t', dailyTag(r.day)]] : []),
       ],
       content: JSON.stringify({ ...r, created_at }),
     },
@@ -73,7 +78,8 @@ function parse(content: string): ResultRow | null {
     const ok =
       typeof r.nickname === 'string' &&
       r.nickname.length <= 40 &&
-      (r.mode === 'campaign' || r.mode === 'online' || r.mode === 'ghost') &&
+      (r.mode === 'campaign' || r.mode === 'online' || r.mode === 'ghost' || r.mode === 'daily') &&
+      (r.score === undefined || (typeof r.score === 'number' && r.score >= 0 && r.score <= 2000)) &&
       typeof r.level === 'number' &&
       r.level >= 0 &&
       r.level <= 10 &&
@@ -85,6 +91,32 @@ function parse(content: string): ResultRow | null {
   } catch {
     return null;
   }
+}
+
+const dailyTag = (day: string) => `spellhand-daily-${day}`;
+
+export interface DailyRow {
+  pubkey: string;
+  nickname: string;
+  score: number;
+  accuracy: number;
+  me: boolean;
+}
+
+/** Топ испытания дня: лучшая попытка каждого игрока. */
+export async function fetchDailyTop(day: string, limit = 20): Promise<DailyRow[]> {
+  const myPk = getPublicKey(secretKey());
+  const events = await getPool().querySync(RELAYS, { kinds: [KIND], '#t': [dailyTag(day)], limit: 500 }, { maxWait: 6000 });
+  const best = new Map<string, DailyRow>();
+  for (const e of events) {
+    const r = parse(e.content);
+    if (!r || r.mode !== 'daily' || r.day !== day || typeof r.score !== 'number') continue;
+    const cur = best.get(e.pubkey);
+    if (!cur || r.score > cur.score) {
+      best.set(e.pubkey, { pubkey: e.pubkey, nickname: r.nickname, score: r.score, accuracy: r.accuracy, me: e.pubkey === myPk });
+    }
+  }
+  return [...best.values()].sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
 /** Топ-20 по победам, затем по средней точности. */

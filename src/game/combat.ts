@@ -139,6 +139,9 @@ export class Battle {
   }
 
   /** Итоговый урон игрока: база × качество жеста × посох. */
+  /** Испытание дня может ограничить заклинания игрока. */
+  allowedSpells: SpellId[] | null = null;
+
   /** Серия удачных кастов подряд (обрывается «слабым» кастом или ошибкой жеста). */
   combo = 0;
 
@@ -167,6 +170,10 @@ export class Battle {
   /** Каст игрока по событию распознавателя. Возвращает false, если отклонён. */
   playerCast(spell: SpellId, quality: number, charge: number, shard: number): boolean {
     if (this.over || spell === 'heal') return false;
+    if (this.allowedSpells && !this.allowedSpells.includes(spell)) {
+      this.emit({ type: 'reject', spell, kind: 'interrupted', reason: 'Сегодня это заклинание запрещено' });
+      return false;
+    }
     const def = SPELLS[spell];
     const staff = this.loadout.staff;
 

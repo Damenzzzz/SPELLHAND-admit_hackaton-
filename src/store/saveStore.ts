@@ -33,6 +33,8 @@ export interface SaveData {
   history?: SessionRecord[];
   /** Рекорд разминки. */
   rushBest?: number;
+  /** Лучший результат испытания дня. */
+  dailyBest?: { id: string; score: number };
 }
 
 const DEFAULT_SAVE: SaveData = {

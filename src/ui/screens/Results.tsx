@@ -33,7 +33,9 @@ export function Results() {
           ? `Уровень ${level.id} · ${level.name} · ${level.enemyName}`
           : r.mode === 'online'
             ? `Онлайн-дуэль с игроком «${r.opponent}»`
-            : 'Соперник не нашёлся — бой с Призраком мага'}
+            : r.mode === 'daily'
+              ? `Испытание дня · ${r.dailyScore ?? 0} очков`
+              : 'Соперник не нашёлся — бой с Призраком мага'}
       </p>
 
       <div className="results-grid">
@@ -117,6 +119,8 @@ export function Results() {
         )}
         {campaign ? (
           <DwellButton onSelect={() => startBattle(r.level)}>🔁 Ещё раз</DwellButton>
+        ) : r.mode === 'daily' ? (
+          <DwellButton onSelect={() => go('daily')}>📅 К испытанию дня</DwellButton>
         ) : (
           <DwellButton onSelect={() => go('online')}>🔍 Новый соперник</DwellButton>
         )}
