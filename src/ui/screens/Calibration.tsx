@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { isDev } from '../../dev';
 import { CameraView } from '../../render/CameraView';
 import { useGame } from '../../store/gameStore';
+import { useGesture } from '../../store/gestureStore';
+import { updateSave } from '../../store/saveStore';
+import { getPalmSign, setPalmSign } from '../../vision/features';
 import { useVision } from '../../store/visionStore';
 import { startVision } from '../../vision/handTracker';
 import { FpsCounter } from '../FpsCounter';
@@ -42,6 +45,9 @@ export function Calibration() {
 
   useEffect(() => {
     let handSince = 0;
+    let facingSum = 0;
+    let facingN = 0;
+    let palmCalibrated = false;
     let runningSince = 0;
     let readySince = 0;
 
@@ -51,13 +57,34 @@ export function Calibration() {
       const running = v.status === 'running';
 
       if (running && !runningSince) runningSince = now;
-      if (running && v.hands.length > 0) handSince ||= now;
-      else handSince = 0;
+      // для калибровки нужна именно открытая ладонь: по ней определяем знак нормали
+      const h = useGesture.getState().snap?.hands[0];
+      const open = h ? (h.extension.index + h.extension.middle + h.extension.ring + h.extension.pinky) / 4 : 0;
+      if (running && h && open > 0.6) {
+        handSince ||= now;
+        facingSum += h.palmFacing;
+        facingN++;
+      } else {
+        handSince = 0;
+        facingSum = 0;
+        facingN = 0;
+      }
 
       const cameraOk = v.videoSize.width > 0;
       const cameraFail = v.status === 'error' && !v.videoSize.width;
       const handHeld = handSince > 0 && now - handSince >= HAND_HOLD_MS;
       const fpsSettled = runningSince > 0 && now - runningSince >= FPS_GRACE_MS;
+
+      // «Покажи ладонь»: если ладонь стабильно считается тыльной стороной — камера
+      // размечает руки наоборот, переворачиваем знак и запоминаем
+      if (handHeld && !palmCalibrated) {
+        palmCalibrated = true;
+        if (facingSum / facingN < -0.1) {
+          const sign = getPalmSign() === 1 ? -1 : 1;
+          setPalmSign(sign);
+          updateSave({ palmSign: sign });
+        }
+      }
 
       const checks: Check[] = [
         {
@@ -74,9 +101,9 @@ export function Calibration() {
         },
         {
           id: 'hand',
-          label: 'Рука в кадре',
+          label: 'Открытая ладонь в кадре',
           state: !running ? 'pending' : handHeld ? 'ok' : 'pending',
-          hint: 'Подними открытую ладонь перед камерой',
+          hint: 'Подними открытую ладонь к камере, пальцы выпрямлены',
         },
         {
           id: 'fps',
