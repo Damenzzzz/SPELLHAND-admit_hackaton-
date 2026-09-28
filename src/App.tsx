@@ -1,6 +1,13 @@
+import { isDev } from './dev';
 import { useGame } from './store/gameStore';
+import { DevPanel, useDevKeys } from './ui/DevPanel';
 import { Calibration } from './ui/screens/Calibration';
 import { Sandbox } from './ui/screens/Sandbox';
+
+function DevTools() {
+  useDevKeys();
+  return <DevPanel />;
+}
 
 export function App() {
   const screen = useGame((s) => s.screen);
@@ -8,6 +15,7 @@ export function App() {
     <main className="app">
       {screen === 'calibration' && <Calibration />}
       {screen === 'sandbox' && <Sandbox />}
+      {isDev && screen !== 'calibration' && <DevTools />}
     </main>
   );
 }

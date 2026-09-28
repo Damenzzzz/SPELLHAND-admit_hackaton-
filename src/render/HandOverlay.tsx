@@ -1,8 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { useVision, type TrackedHand } from '../store/visionStore';
+import { useGesture } from '../store/gestureStore';
+import { useVision, type Handedness } from '../store/visionStore';
+import { FINGER_JOINTS, type FingerId } from '../vision/features';
+import { ERROR_COLOR, GESTURE_COLOR } from './colors';
 
 /** Кости скелета: запястье → пальцы + поперечная линия ладони. */
-const BONES: [number, number][] = [
+export const BONES: [number, number][] = [
   [0, 1], [1, 2], [2, 3], [3, 4],
   [0, 5], [5, 6], [6, 7], [7, 8],
   [5, 9], [9, 10], [10, 11], [11, 12],
@@ -12,14 +15,36 @@ const BONES: [number, number][] = [
 ];
 const TIPS = new Set([4, 8, 12, 16, 20]);
 
-const HAND_COLORS: Record<TrackedHand['handedness'], string> = {
+const HAND_COLORS: Record<Handedness, string> = {
   Left: '#5fa8ff',
   Right: '#f2c35b',
 };
 
+/** Точки пальцев (без запястья) — для красной подсветки. */
+function fingerPoints(fingers: FingerId[]): Set<number> {
+  const s = new Set<number>();
+  for (const f of fingers) FINGER_JOINTS[f].forEach((i) => s.add(i));
+  return s;
+}
+
+export interface CoverBox {
+  ox: number;
+  oy: number;
+  dw: number;
+  dh: number;
+}
+
+/** Та же cover-математика, что у <video object-fit: cover>. */
+export function coverBox(w: number, h: number, vw: number, vh: number): CoverBox {
+  const scale = Math.max(w / vw, h / vh);
+  const dw = vw * scale;
+  const dh = vh * scale;
+  return { ox: (w - dw) / 2, oy: (h - dh) / 2, dw, dh };
+}
+
 /**
- * Канвас поверх видео с object-fit: cover. Координаты landmarks нормированы по кадру,
- * поэтому повторяем ту же cover-математику, что и браузер для <video>.
+ * Канвас поверх видео. Рисует сглаженные landmarks из распознавателя,
+ * пальцы с ошибкой — красным, руку с распознанной позой — цветом заклинания.
  */
 export function HandOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,7 +57,8 @@ export function HandOverlay() {
 
     const draw = () => {
       raf = requestAnimationFrame(draw);
-      const { hands, frameTime, videoSize } = useVision.getState();
+      const { hands: rawHands, frameTime, videoSize } = useVision.getState();
+      const snap = useGesture.getState().snap;
 
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.clientWidth;
@@ -49,37 +75,46 @@ export function HandOverlay() {
       ctx.clearRect(0, 0, w, h);
       if (!videoSize.width) return;
 
-      const scale = Math.max(w / videoSize.width, h / videoSize.height);
-      const dw = videoSize.width * scale;
-      const dh = videoSize.height * scale;
-      const ox = (w - dw) / 2;
-      const oy = (h - dh) / 2;
+      const { ox, oy, dw, dh } = coverBox(w, h, videoSize.width, videoSize.height);
       const r = Math.max(3, Math.min(w, h) / 160);
 
-      for (const hand of hands) {
+      const hands = snap?.hands.length
+        ? snap.hands.map((f) => ({ landmarks: f.raw, handedness: f.handedness }))
+        : rawHands;
+
+      hands.forEach((hand, hi) => {
         const pts = hand.landmarks.map((p) => [ox + p.x * dw, oy + p.y * dh] as const);
-        const color = HAND_COLORS[hand.handedness];
+        const activeHere = snap?.active && snap.activeHandIdx === hi;
+        const twoHandActive = snap?.active === 'wind' || snap?.active === 'heal';
+        const color =
+          snap?.active && (activeHere || twoHandActive)
+            ? GESTURE_COLOR[snap.active]
+            : HAND_COLORS[hand.handedness];
+        const bad =
+          snap?.hint?.kind === 'pose' && snap.hint.handIdx === hi ? fingerPoints(snap.hint.fingers) : null;
 
         ctx.lineCap = 'round';
         ctx.lineWidth = r * 1.2;
-        ctx.strokeStyle = color;
-        ctx.shadowColor = color;
         ctx.shadowBlur = r * 3;
-        ctx.beginPath();
         for (const [a, b] of BONES) {
+          const isBad = bad?.has(a) && bad.has(b);
+          ctx.strokeStyle = isBad ? ERROR_COLOR : color;
+          ctx.shadowColor = ctx.strokeStyle;
+          ctx.lineWidth = isBad ? r * 2 : r * 1.2;
+          ctx.beginPath();
           ctx.moveTo(pts[a][0], pts[a][1]);
           ctx.lineTo(pts[b][0], pts[b][1]);
+          ctx.stroke();
         }
-        ctx.stroke();
 
         ctx.shadowBlur = 0;
         pts.forEach(([x, y], i) => {
-          ctx.fillStyle = TIPS.has(i) ? '#ffffff' : color;
+          ctx.fillStyle = bad?.has(i) ? ERROR_COLOR : TIPS.has(i) ? '#ffffff' : color;
           ctx.beginPath();
           ctx.arc(x, y, TIPS.has(i) ? r * 1.4 : r, 0, Math.PI * 2);
           ctx.fill();
         });
-      }
+      });
     };
 
     raf = requestAnimationFrame(draw);

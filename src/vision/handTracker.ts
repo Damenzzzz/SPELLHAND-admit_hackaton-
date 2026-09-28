@@ -1,4 +1,6 @@
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+import { gestureEngine } from '../gestures/matcher';
+import { useGesture } from '../store/gestureStore';
 import { useVision, type Handedness, type TrackedHand } from '../store/visionStore';
 import { CameraError, startCamera } from './camera';
 
@@ -90,6 +92,10 @@ function runLoop(lm: HandLandmarker) {
         lastBrightness = now;
       }
       useVision.setState(patch);
+
+      const aspect = video.videoWidth / (video.videoHeight || 1);
+      const snap = gestureEngine.update(hands, aspect, useVision.getState().brightness, now);
+      useGesture.setState({ snap });
     }
     scheduleNext();
   };

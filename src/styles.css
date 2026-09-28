@@ -170,3 +170,26 @@ body {
   .check { padding: 6px 8px; font-size: 13px; }
   .sandbox-caption { white-space: normal; width: calc(100% - 32px); font-size: 13px; }
 }
+
+/* --- dev-панель --- */
+.dev-panel {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  z-index: 100;
+  width: 300px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.78);
+  font: 11px/1.4 ui-monospace, Menlo, monospace;
+  pointer-events: none;
+}
+.dev-row { display: grid; grid-template-columns: 96px 1fr 36px; gap: 6px; align-items: center; }
+.dev-title { display: block; margin-bottom: 4px; }
+.dev-bar { height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; }
+.dev-fill { display: block; height: 100%; background: var(--muted); }
+.dev-fill.warn { background: var(--gold); }
+.dev-fill.ok { background: var(--ok); }
+.dev-constraints { margin-top: 6px; color: var(--muted); }
+.dev-bad { color: var(--danger); }
+.dev-keys { margin-top: 6px; color: var(--arcane); }
