@@ -158,6 +158,35 @@ describe('баги из ревью', () => {
     expect(snap.hint?.kind === 'pose' ? snap.hint.gesture : null).not.toBe('shield');
   });
 
+  it('перепутанная на кадр метка руки не снимает щит', () => {
+    const engine = new GestureEngine();
+    const fist = hand({ ext: FIST });
+    const frames = Array.from({ length: 40 }, (_, i) => [
+      { ...fist, handedness: (i % 3 === 2 ? 'Right' : 'Left') as 'Left' | 'Right' },
+    ]);
+    let armedFrames = 0;
+    frames.forEach((f, i) => {
+      const s = engine.update(f, ASPECT, 120, i * FRAME_MS);
+      if (i >= 10 && s.active === 'shield') armedFrames++;
+    });
+    expect(armedFrames).toBe(30);
+  });
+
+  it('две руки сохраняют свои треки, даже если метки меняются местами', () => {
+    const engine = new GestureEngine();
+    const left = hand({ ext: OPEN, right: false, wrist: { x: 0.7, y: 0.7 } });
+    const right = hand({ ext: FIST, wrist: { x: 0.3, y: 0.7 } });
+    let s = engine.update([right, left], ASPECT, 120, 0);
+    for (let i = 1; i < 20; i++) {
+      const swap = i % 4 === 0;
+      const a = swap ? { ...right, handedness: left.handedness } : right;
+      const b = swap ? { ...left, handedness: right.handedness } : left;
+      s = engine.update(i % 2 ? [a, b] : [b, a], ASPECT, 120, i * FRAME_MS);
+    }
+    const fistHand = s.hands.find((h) => h.extension.index < 0.3)!;
+    expect(fistHand.isRealRight).toBe(true);
+  });
+
   it('«мало света» — только по яркости кадра', () => {
     const engine = new GestureEngine();
     let snap = engine.update([hand({ ext: { ...OPEN, ring: 0 } })], ASPECT, 30, 0);

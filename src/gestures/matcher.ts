@@ -2,6 +2,7 @@ import type { TrackedHand } from '../store/visionStore';
 import { computeFeatures, type FingerId, type HandFeatures } from '../vision/features';
 import { LandmarkFilter } from '../vision/oneEuro';
 import { GESTURE_CONFIG as C } from './config';
+import { HandIdentity } from './handIdentity';
 import { MotionTrack } from './motion';
 import { TEMPLATES, TEMPLATE_BY_ID } from './templates';
 import type { ConstraintResult, GestureId, GestureTemplate, TemplateScore } from './types';
@@ -122,6 +123,7 @@ export class GestureEngine {
   private tracks = new Map<string, MotionTrack>();
   private keys: string[] = [];
   private listeners = new Set<Listener>();
+  private identity = new HandIdentity();
 
   // стабилизация
   private candidate: GestureId | null = null;
@@ -169,31 +171,23 @@ export class GestureEngine {
     this.emit({ type: 'cast', gesture: g, quality: 0.92, charge: 1, shard: 1, handIdx: 0, t: performance.now() });
   }
 
-  private assignKeys(hands: TrackedHand[]): string[] {
-    const seen = new Map<string, number>();
-    return hands.map((h) => {
-      const n = seen.get(h.handedness) ?? 0;
-      seen.set(h.handedness, n + 1);
-      return n ? `${h.handedness}${n}` : h.handedness;
-    });
-  }
-
   update(tracked: TrackedHand[], aspect: number, brightness: number, now: number): GestureSnapshot {
-    const keys = this.assignKeys(tracked);
+    const { keys, handedness, alive } = this.identity.assign(tracked, now);
     for (const k of this.keys) {
-      if (!keys.includes(k)) {
+      if (!alive.includes(k)) {
         this.filters.delete(k);
         this.tracks.get(k)?.clear();
+        this.tracks.delete(k);
       }
     }
-    this.keys = keys;
+    this.keys = alive;
 
     const hands = tracked.map((h, i) => {
       const key = keys[i];
       let filter = this.filters.get(key);
       if (!filter) this.filters.set(key, (filter = new LandmarkFilter()));
       const pts = filter.apply(h.landmarks, now / 1000);
-      const f = computeFeatures(pts, h.handedness, h.score, aspect);
+      const f = computeFeatures(pts, handedness[i], h.score, aspect);
       let track = this.tracks.get(key);
       if (!track) this.tracks.set(key, (track = new MotionTrack()));
       track.push(f, now);
@@ -263,7 +257,7 @@ export class GestureEngine {
       this.lowFrames = s < C.release ? this.lowFrames + 1 : 0;
       this.quality = this.quality * 0.85 + s * 0.15;
       const switching = this.candidate && this.candidate !== this.active && this.stable >= C.stableFrames;
-      if (this.lowFrames >= C.releaseFrames || switching || !keys.includes(this.activeKey)) {
+      if (this.lowFrames >= C.releaseFrames || switching || !this.keys.includes(this.activeKey)) {
         this.deactivate(now, true);
       }
     }
