@@ -90,7 +90,7 @@
         720
       ],
       "out": "public/assets/images/arenas/tower.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena at the top of a tower of mirrors, floating mirror shards reflecting violet light, polished floor, no characters"
     },
     {
@@ -103,7 +103,7 @@
         720
       ],
       "out": "public/assets/images/arenas/cliff.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena on a stormy sea cliff, dark thunderclouds, distant lightning, rune stones, no characters"
     },
     {
