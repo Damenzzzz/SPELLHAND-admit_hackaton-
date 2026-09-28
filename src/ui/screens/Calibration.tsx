@@ -126,7 +126,7 @@ export function Calibration() {
       const readyProgress = readySince ? Math.min(1, (now - readySince) / READY_HOLD_MS) : 0;
 
       setSnap({ checks, readyProgress });
-      if (readyProgress >= 1) go('sandbox');
+      if (readyProgress >= 1) go('menu');
     }, POLL_MS);
 
     return () => clearInterval(id);
@@ -164,7 +164,7 @@ export function Calibration() {
         )}
 
         {isDev && (
-          <button className="dev-skip" onClick={() => go('sandbox')}>
+          <button className="dev-skip" onClick={() => go('menu')}>
             dev: пропустить
           </button>
         )}

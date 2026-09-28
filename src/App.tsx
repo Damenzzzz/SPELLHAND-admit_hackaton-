@@ -14,7 +14,7 @@ export function App() {
   return (
     <main className="app">
       {screen === 'calibration' && <Calibration />}
-      {screen === 'sandbox' && <Sandbox />}
+      {screen === 'menu' && <Sandbox />}
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>
   );
