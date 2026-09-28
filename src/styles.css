@@ -540,3 +540,30 @@ body {
   .results-grid { grid-template-columns: 1fr; }
   .stat-row { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* --- кампания --- */
+.campaign .shell-content, .shop .shell-content { justify-content: flex-start; overflow-y: auto; }
+.level-grid { display: grid; grid-template-columns: repeat(5, minmax(120px, 170px)); gap: 12px; }
+.level-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 10px; font-size: 15px; }
+.level-card .dwell-content { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.level-num { font-size: 13px; color: var(--muted); }
+.level-portrait { font-size: 40px; }
+.level-name { font-size: 14px; }
+.level-boss { border-color: rgba(255, 127, 208, 0.6); }
+.level-done { border-color: rgba(93, 255, 160, 0.5); }
+
+/* --- магазин --- */
+.tabs { display: flex; gap: 10px; }
+.tabs .dwell-btn { min-width: 160px; text-align: center; }
+.tab-on { border-color: var(--gold); background: rgba(242, 195, 91, 0.15); }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 200px)); justify-content: center; gap: 12px; width: min(1100px, 100%); }
+.shop-card .dwell-content { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.shop-icon { font-size: 40px; }
+.shop-name { font-size: 16px; }
+.shop-price { margin-top: 4px; color: var(--gold); }
+.shop-equipped { border-color: var(--ok); }
+.shop-msg { margin: 0; padding: 8px 14px; border-radius: 10px; background: rgba(20, 27, 61, 0.9); }
+
+@media (max-width: 760px), (orientation: portrait) {
+  .level-grid { grid-template-columns: repeat(2, 1fr); }
+}

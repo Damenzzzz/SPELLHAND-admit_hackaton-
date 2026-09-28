@@ -5,8 +5,10 @@ import { SoundBadge } from './ui/SoundBadge';
 import { Academy } from './ui/screens/Academy';
 import { BattleScreen } from './ui/screens/Battle';
 import { Calibration } from './ui/screens/Calibration';
+import { Campaign } from './ui/screens/Campaign';
 import { Menu } from './ui/screens/Menu';
 import { Results } from './ui/screens/Results';
+import { Shop } from './ui/screens/Shop';
 
 function DevTools() {
   useDevKeys();
@@ -22,6 +24,8 @@ export function App() {
       {screen === 'academy' && <Academy />}
       {screen === 'battle' && <BattleScreen />}
       {screen === 'results' && <Results />}
+      {screen === 'campaign' && <Campaign />}
+      {screen === 'shop' && <Shop />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>
