@@ -40,11 +40,14 @@ export class PvpLink {
   onLeave: (() => void) | null = null;
   /** Соперник взводит жест (или отпустил — null): видно его «телеграф», можно финтить. */
   onForming: ((g: GestureId | null) => void) | null = null;
+  /** Скелет руки соперника (x,y ×10⁴, 21 точка) — видно, как он складывает жест. */
+  onHand: ((lm: number[] | null) => void) | null = null;
 
   private castA;
   private stateA;
   private endA;
   private formingA;
+  private handA;
   private closed = false;
 
   /** Резолвится временем старта (Date.now()-шкала) или null, если соперник не подключился. */
@@ -59,6 +62,8 @@ export class PvpLink {
     this.endA = this.room.makeAction<{ loser: string }>('end');
     this.formingA = this.room.makeAction<{ g: GestureId | null }>('forming');
     this.formingA.onMessage = ({ g }) => this.onForming?.(g);
+    this.handA = this.room.makeAction<{ lm: number[] | null }>('hand');
+    this.handA.onMessage = ({ lm }) => this.onHand?.(lm);
 
     this.castA.onMessage = (c) => this.onCast?.(c);
     this.stateA.onMessage = (s) => this.onState?.(s);
@@ -91,6 +96,12 @@ export class PvpLink {
 
   sendState(s: StateMsg) {
     if (!this.closed) void this.stateA.send(s);
+  }
+
+  /** Точки руки вместо видео: ~1 КБ/с и никакой картинки с камеры. */
+  sendHand(pts: { x: number; y: number }[] | null) {
+    if (this.closed) return;
+    void this.handA.send({ lm: pts ? pts.flatMap((p) => [Math.round(p.x * 1e4), Math.round(p.y * 1e4)]) : null });
   }
 
   sendForming(g: GestureId | null) {

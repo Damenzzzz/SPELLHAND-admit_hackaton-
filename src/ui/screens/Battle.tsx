@@ -14,7 +14,8 @@ import { BattleStats } from '../../game/stats';
 import { gestureEngine } from '../../gestures/matcher';
 import { TEMPLATES } from '../../gestures/templates';
 import type { GestureId, SpellId } from '../../gestures/types';
-import { currentLink, setCurrentLink, STATE_EVERY_MS } from '../../net/session';
+import { currentLink, HAND_EVERY_MS, remoteHand, setCurrentLink, STATE_EVERY_MS } from '../../net/session';
+import { OpponentHand } from '../../render/OpponentHand';
 import { CameraView } from '../../render/CameraView';
 import { coverBox } from '../../render/HandOverlay';
 import { SpellVfx, type VfxLayout } from '../../render/SpellVFX';
@@ -100,6 +101,10 @@ export function BattleScreen() {
         battle.forceEnd('player');
       };
       link.onForming = (g) => setRemoteForming(g);
+      link.onHand = (lm) => {
+        remoteHand.pts = lm ? Array.from({ length: lm.length / 2 }, (_, i) => ({ x: lm[i * 2] / 1e4, y: lm[i * 2 + 1] / 1e4 })) : null;
+        remoteHand.at = performance.now();
+      };
       link.onLeave = () => {
         if (battle.over) return;
         remoteEnded = true;
@@ -305,6 +310,7 @@ export function BattleScreen() {
     let lastHud = 0;
     let lastState = 0;
     let lastForming: GestureId | null = null;
+    let lastHand = 0;
     let raf = 0;
 
     const computeLayout = (): VfxLayout | null => {
@@ -376,6 +382,13 @@ export function BattleScreen() {
           active: phaseNow === 'fight' && active === 'fireball',
           value: snap?.charge ?? 0,
         });
+      }
+
+      // онлайн: скелет моей руки сопернику (вместо видео)
+      if (link && now - lastHand >= HAND_EVERY_MS) {
+        lastHand = now;
+        const h = snap?.hands[Math.max(0, snap.activeHandIdx)];
+        link.sendHand(h ? h.raw.map((p) => ({ x: p.x, y: p.y })) : null);
       }
 
       // онлайн: я авторитетен по своему HP — рассылаю состояние каждые 250 мс
@@ -499,6 +512,7 @@ export function BattleScreen() {
             className={`enemy-img ${setup.kind === 'ghost' ? 'enemy-ghost' : ''}`}
           />
         </div>
+        {online && <OpponentHand />}
         {online && remoteForming && remoteForming !== 'shield' && (
           <div className="telegraph">
             <div className="telegraph-rune">
