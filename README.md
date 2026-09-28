@@ -44,6 +44,18 @@
 - Контр-логика: щит гасит огонь и лёд, молния пробивает 50%, ветер ломает щиты и сбивает заряд.
 - Магазин: 5 посохов и 3 щита (`src/game/data/items.ts`), прогресс в localStorage.
 - Звуки синтезируются Web Audio (`src/game/sfx.ts`) — без аудиофайлов.
+- **AR-посох:** экипированный 3D-посох (GLB) держится в руке на видео — позиция по запястью, направление запястье → MCP среднего пальца, навершие светится цветом взведённого заклинания (`src/render/StaffAttachment.tsx`, React Three Fiber).
+
+## Ассеты
+
+Все ассеты сгенерированы офлайн и закоммичены в `public/assets` — ключи генерации в клиент не попадают.
+
+- **2D (Nano Banana 2, `gemini-3.1-flash-image`):** `scripts/gen-images.ts` идёт по `scripts/assets.manifest.json` (36 позиций: логотип, фон меню, 10 арен, 10 портретов врагов, 6 иконок заклинаний, 5 концептов посохов, 3 руны щитов). Единый стиль — `scripts/style-bible.md`; первое изображение передаётся референсом во все остальные. Прозрачность — хромакей #00FF00 через `sharp`, результат в WebP.
+  ```bash
+  node --env-file=.env scripts/gen-images.ts --concurrency 1   # GEMINI_API_KEY (Gemini API или Vertex AI Express)
+  ```
+- **3D-посохи:** Meshy/Tripo/Blender были недоступны, поэтому 5 посохов смоделированы процедурно в коде (`scripts/build-staffs.mjs`: three.js → GLB), по концепт-артам из Nano Banana, затем `scripts/optimize-models.sh` (gltf-transform + meshopt, 12–24 КБ на модель). Превью: `npm run dev` → `/scripts/preview-staffs.html`.
+- Всё грузится заранее с прогресс-баром на экране калибровки.
 
 ## Локальный запуск
 
@@ -60,11 +72,11 @@ npm test       # тесты распознавателя и боевой сис�
 - [x] Фаза 0 — каркас, камера, трекинг, калибровка, деплой
 - [x] Фаза 1 — распознавание 6 жестов, режим «ошибка», бой, бот, итоги, академия
 - [x] Фаза 2 — 10 уровней, кампания, монеты, магазин, сохранение, dwell-меню, звуки, ломающийся щит, рекорды
-- [ ] Фаза 3 — сгенерированные ассеты (арены, портреты, 3D-посохи)
+- [x] Фаза 3 — сгенерированные 2D-ассеты, 5 посохов в 3D, AR-посох в руке, прогресс загрузки
 - [ ] Фаза 4 — онлайн PvP
 
 ## Стек и референсы
 
-Vite · React · TypeScript · @mediapipe/tasks-vision · zustand · Vitest · Vercel.
+Vite · React · TypeScript · @mediapipe/tasks-vision · three.js · @react-three/fiber · @react-three/drei · zustand · Vitest · Vercel. Ассеты: @google/genai (Nano Banana 2), sharp, @gltf-transform/cli.
 
 Референсы (только идеи, код не копировался): bunkerapps/Jutsu-Hero, sainipriyanshi7284/Arcana_wizard_duel_game, jaswin-codes/jutsu_code_stage1. One Euro filter — по статье Casiez et al., 2012.
