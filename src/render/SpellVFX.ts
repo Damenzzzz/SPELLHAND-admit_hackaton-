@@ -260,9 +260,8 @@ export class SpellVfx {
     ctx.save();
     ctx.translate(c.x, c.y);
     if (rune?.complete && rune.naturalWidth) {
-      // текстура руны вращается, чёрный фон исчезает при аддитивном смешении
+      // текстура руны (прозрачная, альфа из яркости) медленно вращается
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.75 + 0.15 * Math.sin(time / 200) + (flash ? 0.3 : 0);
       ctx.rotate(-time / 2500);
       ctx.drawImage(rune, -r * 1.08, -r * 1.08, r * 2.16, r * 2.16);

@@ -74,6 +74,23 @@ async function chromaKey(input: Buffer): Promise<Buffer> {
   return sharp(data, { raw: info }).png().toBuffer();
 }
 
+/** Светящееся на чёрном → прозрачность из яркости (как screen-смешение, но в самой картинке). */
+async function lumaKey(input: Buffer): Promise<Buffer> {
+  const { data, info } = await sharp(input).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  for (let i = 0; i < data.length; i += 4) {
+    const m = Math.max(data[i], data[i + 1], data[i + 2]);
+    const alpha = m < 18 ? 0 : m;
+    data[i + 3] = alpha;
+    if (alpha) {
+      const k = 255 / alpha;
+      data[i] = Math.min(255, data[i] * k);
+      data[i + 1] = Math.min(255, data[i + 1] * k);
+      data[i + 2] = Math.min(255, data[i + 2] * k);
+    }
+  }
+  return sharp(data, { raw: info }).png().toBuffer();
+}
+
 async function processAsset(a: Asset, raw: Buffer) {
   const out = resolve(ROOT, a.out);
   mkdirSync(dirname(out), { recursive: true });
@@ -85,8 +102,10 @@ async function processAsset(a: Asset, raw: Buffer) {
       .resize(w, h, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .webp({ quality: 85, alphaQuality: 90 })
       .toFile(out);
+  } else if (a.bg === 'black') {
+    await sharp(await lumaKey(raw)).resize(w, h, { fit: 'cover' }).webp({ quality: 85, alphaQuality: 90 }).toFile(out);
   } else {
-    await sharp(raw).resize(w, h, { fit: 'cover' }).webp({ quality: a.bg === 'scene' ? 78 : 85 }).toFile(out);
+    await sharp(raw).resize(w, h, { fit: 'cover' }).webp({ quality: 78 }).toFile(out);
   }
 }
 
