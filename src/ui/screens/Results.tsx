@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { LEVELS, LEVEL_BY_ID } from '../../game/data/levels';
 import { TEMPLATES, TEMPLATE_BY_ID } from '../../gestures/templates';
 import { useGame } from '../../store/gameStore';
@@ -18,6 +19,7 @@ function times(n: number) {
 /** Итоги боя: точность, качество по спеллам, топ-3 ошибки и что тренировать. */
 export function Results() {
   const { lastResult: r, startBattle, go, openAcademy } = useGame();
+  const [shared, setShared] = useState<string | null>(null);
   if (!r) return null;
   const campaign = r.mode === 'campaign';
   const level = LEVEL_BY_ID[r.level];
@@ -129,6 +131,15 @@ export function Results() {
             📖 Тренировать {TEMPLATE_BY_ID[trainGesture].icon}
           </DwellButton>
         )}
+        <DwellButton
+          onSelect={() =>
+            void import('../shareCard').then(({ shareResult }) =>
+              shareResult(r).then((how) => setShared(how === 'shared' ? 'Отправлено!' : 'Картинка скачана')),
+            )
+          }
+        >
+          📤 {shared ?? 'Поделиться'}
+        </DwellButton>
         <DwellButton onSelect={() => go('menu')}>🏠 Меню</DwellButton>
       </nav>
     </ScreenShell>
