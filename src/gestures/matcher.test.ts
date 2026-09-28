@@ -187,6 +187,16 @@ describe('баги из ревью', () => {
     expect(fistHand.isRealRight).toBe(true);
   });
 
+  it('рука ушла из кадра посреди взмаха молнии — каст, а не потеря', () => {
+    const engine = new GestureEngine();
+    const events: GestureEvent[] = [];
+    engine.on((e) => events.push(e));
+    // умеренный взмах (между weak и full порогами), затем рука пропадает
+    const swipe = [0.34, 0.41, 0.48].map((y) => [hand({ ext: POINT, wrist: { x: 0.5, y } })]);
+    run(engine, [...hold([hand({ ext: POINT, wrist: { x: 0.5, y: 0.28 } })]), ...swipe, [], []]);
+    expect(events.find((e) => e.type === 'cast')).toMatchObject({ gesture: 'lightning' });
+  });
+
   it('«мало света» — только по яркости кадра', () => {
     const engine = new GestureEngine();
     let snap = engine.update([hand({ ext: { ...OPEN, ring: 0 } })], ASPECT, 30, 0);

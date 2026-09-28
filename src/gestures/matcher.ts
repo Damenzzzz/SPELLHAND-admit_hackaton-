@@ -349,12 +349,18 @@ export class GestureEngine {
     debug.vy = v.vy;
     debug.tipVy = track.tipVelocityY();
 
+    // рука пропала из кадра прямо во время быстрого движения (смаз, ушла за край) —
+    // это и есть толчок/взмах, а не потеря жеста
+    const vanished = !keys.includes(armed.key);
+
     if (kind === 'push') {
-      if (debug.growth >= C.pushGrowth) this.cast(g, armed.key, keys, now, armed.quality, armed.charge);
-      else if (debug.growth >= C.pushWeak) this.markWeak(g, now);
+      if (debug.growth >= C.pushGrowth || (vanished && debug.growth >= C.pushWeak)) {
+        this.cast(g, armed.key, keys, now, armed.quality, armed.charge);
+      } else if (debug.growth >= C.pushWeak) this.markWeak(g, now);
     } else if (kind === 'swipeDown') {
-      if (v.vy >= C.swipeDown) this.cast(g, armed.key, keys, now, armed.quality, 1);
-      else if (v.vy >= C.swipeDownWeak) this.markWeak(g, now);
+      if (v.vy >= C.swipeDown || (vanished && v.vy >= C.swipeDownWeak)) {
+        this.cast(g, armed.key, keys, now, armed.quality, 1);
+      } else if (v.vy >= C.swipeDownWeak) this.markWeak(g, now);
     } else if (kind === 'flickDown') {
       if (debug.tipVy >= C.flickDown && now - this.lastFlick >= C.flickRefractoryMs) {
         this.lastFlick = now;

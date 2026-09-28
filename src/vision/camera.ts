@@ -56,7 +56,8 @@ export async function startCamera(video: HTMLVideoElement): Promise<MediaStream>
         facingMode: 'user',
         width: { ideal: size.width },
         height: { ideal: size.height },
-        frameRate: { ideal: 30 },
+        // 60 fps на десктопе — меньше смаза на быстрых жестах (MediaPipe успевает ~60 на GPU)
+        frameRate: { ideal: isMobile() ? 30 : 60 },
       },
     });
   } catch (err) {
