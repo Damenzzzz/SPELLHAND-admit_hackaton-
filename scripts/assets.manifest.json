@@ -311,7 +311,7 @@
         256
       ],
       "out": "public/assets/images/spells/ice.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "game spell icon: three sharp ice shards flying together, centered, bold shape"
     },
     {
@@ -324,7 +324,7 @@
         256
       ],
       "out": "public/assets/images/spells/lightning.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "game spell icon: a jagged yellow lightning bolt, centered, bold shape"
     },
     {
@@ -337,7 +337,7 @@
         256
       ],
       "out": "public/assets/images/spells/wind.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "game spell icon: a swirling gust of wind vortex in mint colors, centered, bold shape"
     },
     {
@@ -350,7 +350,7 @@
         256
       ],
       "out": "public/assets/images/spells/heal.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "game spell icon: glowing green healing leaf with a soft heart-shaped light, centered, bold shape"
     },
     {
@@ -363,7 +363,7 @@
         256
       ],
       "out": "public/assets/images/spells/shield.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "game spell icon: a round magical rune shield glowing blue, centered, bold shape"
     },
     {
