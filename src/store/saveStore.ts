@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GestureId } from '../gestures/types';
+import { randomNick } from '../net/nick';
 
 const KEY = 'spellhand.save.v1';
 
@@ -20,6 +21,10 @@ export interface SaveData {
   learned: GestureId[];
   /** Знак нормали ладони, найденный калибровкой. */
   palmSign: 1 | -1;
+  /** Ник для онлайна и лидерборда. */
+  nickname: string;
+  /** Итоги онлайн-боёв. */
+  online: { wins: number; losses: number };
 }
 
 const DEFAULT_SAVE: SaveData = {
@@ -30,6 +35,8 @@ const DEFAULT_SAVE: SaveData = {
   records: {},
   learned: [],
   palmSign: 1,
+  nickname: randomNick(),
+  online: { wins: 0, losses: 0 },
 };
 
 function load(): SaveData {
