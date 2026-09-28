@@ -144,6 +144,20 @@ describe('баги из ревью', () => {
     expect(snap.hint).toBeNull();
   });
 
+  it('чуть согнутый указательный ниже головы — подсказка молнии, а не щита', () => {
+    const engine = new GestureEngine();
+    const snap = run(engine, hold([hand({ ext: { thumb: 0.1, index: 0.65, middle: 0, ring: 0, pinky: 0 }, wrist: { x: 0.5, y: 0.75 } })]));
+    expect(snap.hint?.gesture).toBe('lightning');
+    expect(snap.hint?.lines).toContain('Подними руку выше головы');
+  });
+
+  it('без явного намерения подсказок near-miss нет', () => {
+    // полусжатая «клешня»: ни кулак, ни ладонь, ни указательный
+    const claw = { thumb: 0.5, index: 0.55, middle: 0.55, ring: 0.55, pinky: 0.55 };
+    const snap = run(new GestureEngine(), hold([hand({ ext: claw })]));
+    expect(snap.hint?.kind === 'pose' ? snap.hint.gesture : null).not.toBe('shield');
+  });
+
   it('«мало света» — только по яркости кадра', () => {
     const engine = new GestureEngine();
     let snap = engine.update([hand({ ext: { ...OPEN, ring: 0 } })], ASPECT, 30, 0);

@@ -65,6 +65,10 @@ const otherOpen: Constraint = {
   hint: 'Раскрой вторую ладонь',
 };
 
+const e = (h: HandFeatures) => h.extension;
+const curledAll = (h: HandFeatures, max: number) =>
+  e(h).index <= max && e(h).middle <= max && e(h).ring <= max && e(h).pinky <= max;
+
 /** Расстояние между запястьями в размерах ладони. */
 const wristGap = (h: HandFeatures, other: HandFeatures | null) =>
   other ? dist(h.pts[0], other.pts[0]) / ((h.palmSize + other.palmSize) / 2) : Infinity;
@@ -91,6 +95,7 @@ export const TEMPLATES: GestureTemplate[] = [
       weakHint: 'Толкни ладонь вперёд резче',
     },
     ghost: { ext: { thumb: 1, index: 1, middle: 1, ring: 1, pinky: 1 }, facing: 1 },
+    intent: (h) => openness(h) >= 0.55,
   },
   {
     id: 'ice',
@@ -118,6 +123,7 @@ export const TEMPLATES: GestureTemplate[] = [
       weakHint: 'Кивни кистью вниз резче',
     },
     ghost: { ext: { thumb: 0.3, index: 1, middle: 1, ring: 0, pinky: 0 }, facing: 1, fingersTogether: true },
+    intent: (h) => e(h).index >= 0.5 && e(h).middle >= 0.5 && e(h).ring <= 0.5 && e(h).pinky <= 0.5,
   },
   {
     id: 'lightning',
@@ -152,6 +158,8 @@ export const TEMPLATES: GestureTemplate[] = [
       weakHint: 'Махни вниз быстрее',
     },
     ghost: { ext: { thumb: 0.2, index: 1, middle: 0, ring: 0, pinky: 0 }, facing: 1, raised: true },
+    // указательный заметно выпрямленнее остальных — даже если чуть согнут и рука низко
+    intent: (h) => e(h).index >= 0.4 && e(h).index - Math.max(e(h).middle, e(h).ring, e(h).pinky) >= 0.3,
   },
   {
     id: 'wind',
@@ -177,6 +185,7 @@ export const TEMPLATES: GestureTemplate[] = [
       weakHint: 'Веди обе руки в одну сторону одновременно и быстрее',
     },
     ghost: { ext: { thumb: 1, index: 1, middle: 1, ring: 1, pinky: 1 }, facing: 1, twoHands: 'apart' },
+    intent: (h, ctx) => openness(h) >= 0.5 && (!ctx.other || wristGap(h, ctx.other) >= 1.3),
   },
   {
     id: 'heal',
@@ -202,6 +211,7 @@ export const TEMPLATES: GestureTemplate[] = [
       weakHint: 'Держи ладони вместе дольше',
     },
     ghost: { ext: { thumb: 1, index: 1, middle: 1, ring: 1, pinky: 1 }, facing: 1, twoHands: 'together' },
+    intent: (h, ctx) => openness(h) >= 0.5 && !!ctx.other && wristGap(h, ctx.other) < 2,
   },
   {
     id: 'shield',
@@ -223,6 +233,7 @@ export const TEMPLATES: GestureTemplate[] = [
       weakHint: 'Держи кулак ровно',
     },
     ghost: { ext: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 }, facing: 1 },
+    intent: (h) => curledAll(h, 0.45),
   },
 ];
 

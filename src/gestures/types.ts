@@ -53,6 +53,12 @@ export interface GestureTemplate {
   pose: Constraint[];
   motion: MotionTrigger;
   ghost: GhostSpec;
+  /**
+   * Грубое «намерение»: игрок явно пытается показать ЭТОТ жест. Подсказки near-miss
+   * даются только по шаблонам с выполненным намерением — иначе чуть согнутый указательный
+   * у молнии превращается в совет для щита.
+   */
+  intent: (h: HandFeatures, ctx: FrameCtx) => boolean;
 }
 
 export interface ConstraintResult {
@@ -69,4 +75,6 @@ export interface TemplateScore {
   results: ConstraintResult[];
   /** Индекс руки в кадре, на которой шаблон оценён лучше всего. */
   handIdx: number;
+  /** Выполнено ли намерение шаблона на этой руке. */
+  intent: boolean;
 }

@@ -65,7 +65,10 @@ const CONTEXT = {
 };
 
 function evalTemplate(tpl: GestureTemplate, hands: HandFeatures[]): TemplateScore {
-  const run = (h: HandFeatures, other: HandFeatures | null): { score: number; results: ConstraintResult[] } => {
+  const run = (
+    h: HandFeatures,
+    other: HandFeatures | null,
+  ): { score: number; results: ConstraintResult[]; intent: boolean } => {
     let sum = 0;
     let wsum = 0;
     const results = tpl.pose.map((c) => {
@@ -74,7 +77,7 @@ function evalTemplate(tpl: GestureTemplate, hands: HandFeatures[]): TemplateScor
       wsum += c.weight;
       return { id: c.id, label: c.label, hint: c.hint, score: s, fingers: c.fingers ?? [] };
     });
-    return { score: sum / wsum, results };
+    return { score: sum / wsum, results, intent: tpl.intent(h, { other }) };
   };
 
   if (hands.length === 0) {
@@ -82,6 +85,7 @@ function evalTemplate(tpl: GestureTemplate, hands: HandFeatures[]): TemplateScor
       id: tpl.id,
       score: 0,
       handIdx: -1,
+      intent: false,
       results: tpl.pose.map((c) => ({ id: c.id, label: c.label, hint: c.hint, score: 0, fingers: c.fingers ?? [] })),
     };
   }
@@ -96,6 +100,17 @@ function evalTemplate(tpl: GestureTemplate, hands: HandFeatures[]): TemplateScor
     if (!best || r.score > best.score) best = { id: tpl.id, handIdx: i, ...r };
   });
   return best!;
+}
+
+/**
+ * Кандидат для подсказки near-miss: шаблоны, которые игрок явно пытается показать
+ * (intent), в диапазоне [nearMiss; recognize); двуручные — в приоритете.
+ */
+function nearMissCandidate(scores: Record<GestureId, TemplateScore>): TemplateScore | null {
+  const inRange = Object.values(scores)
+    .filter((s) => s.intent && s.score >= C.nearMiss && s.score < C.recognize)
+    .sort((a, b) => b.score - a.score);
+  return inRange.find((s) => TEMPLATE_BY_ID[s.id].hands === 2) ?? inRange[0] ?? null;
 }
 
 /**
@@ -203,7 +218,7 @@ export class GestureEngine {
         ? Math.max(0, Math.min(1, (now - this.activeSince - C.chargeMinMs) / (C.chargeMaxMs - C.chargeMinMs)))
         : 0;
 
-    const hint = this.buildHint(hands, best, brightness, now);
+    const hint = this.buildHint(hands, nearMissCandidate(scores), brightness, now);
 
     const devActive = this.devHold;
     return {
