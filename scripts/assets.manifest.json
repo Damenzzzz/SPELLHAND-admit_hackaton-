@@ -116,7 +116,7 @@
         720
       ],
       "out": "public/assets/images/arenas/wastes.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena in windswept desert wastes, swirling sand, broken pillars, amber sky, no characters"
     },
     {
@@ -129,7 +129,7 @@
         720
       ],
       "out": "public/assets/images/arenas/crypt.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena in an ancient necropolis crypt, tombs, ghostly teal candles, cobwebs, no characters"
     },
     {
@@ -142,7 +142,7 @@
         720
       ],
       "out": "public/assets/images/arenas/abyss.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena at the gates of the abyss, crimson portal, lava cracks, obsidian floor, no characters"
     },
     {
@@ -181,7 +181,7 @@
         512
       ],
       "out": "public/assets/images/enemies/2.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "bust portrait of a mischievous fire imp with small horns, ember skin and flames for hair, facing the viewer, character portrait"
     },
     {
@@ -194,7 +194,7 @@
         512
       ],
       "out": "public/assets/images/enemies/3.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "bust portrait of an elegant snow witch with pale blue skin, ice crown and frosty white hair, facing the viewer, character portrait"
     },
     {
@@ -207,7 +207,7 @@
         512
       ],
       "out": "public/assets/images/enemies/4.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "bust portrait of a swamp troll shaman with mossy skin, bone necklace and a glowing green eye, facing the viewer, character portrait"
     },
     {
@@ -220,7 +220,7 @@
         512
       ],
       "out": "public/assets/images/enemies/5.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "bust portrait of a mirror guardian golem boss made of polished silver and violet mirror shards, glowing eyes, imposing, facing the viewer, character portrait"
     },
     {
@@ -233,7 +233,7 @@
         512
       ],
       "out": "public/assets/images/enemies/6.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "bust portrait of a thunder priest in dark robes with gold trims, crackling lightning around his hands and eyes, facing the viewer, character portrait"
     },
     {
@@ -246,7 +246,7 @@
         512
       ],
       "out": "public/assets/images/enemies/7.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "bust portrait of a masked storm nomad with flowing scarves caught in wind, sand-colored clothes, facing the viewer, character portrait"
     },
     {
