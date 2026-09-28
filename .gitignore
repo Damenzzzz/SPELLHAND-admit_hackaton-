@@ -6,3 +6,4 @@ dist
 *.log
 # генерируется postinstall-скриптом (scripts/copy-mediapipe.mjs)
 public/mediapipe/
+*.tsbuildinfo
