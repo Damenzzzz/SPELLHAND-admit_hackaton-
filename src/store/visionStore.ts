@@ -1,12 +1,11 @@
 import { create } from 'zustand';
-import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 
 export type VisionStatus = 'idle' | 'camera' | 'model' | 'running' | 'error';
 
 export type Handedness = 'Left' | 'Right';
 
 export interface TrackedHand {
-  landmarks: NormalizedLandmark[];
+  landmarks: { x: number; y: number; z: number }[];
   /** Метка MediaPipe (рассчитана на зеркальное селфи-изображение). */
   handedness: Handedness;
   score: number;

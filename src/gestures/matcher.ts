@@ -124,10 +124,10 @@ export class GestureEngine {
 
   // движение
   private shards = 0;
-  private lastFlick = 0;
+  private lastFlick = -Infinity;
   private weak: { gesture: GestureId; since: number } | null = null;
   private motionHint: { hint: Hint; until: number } | null = null;
-  private lastMisfire = 0;
+  private lastMisfire = -Infinity;
 
   // near-miss
   private nm: { id: GestureId; since: number; reported: boolean } | null = null;
