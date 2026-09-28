@@ -49,6 +49,12 @@ export class BotAI {
 
     if (enemy.shield.up && t >= this.shieldUntil) b.setShield('enemy', false);
 
+    // ледяная тюрьма: заморожен — не колдует и не телеграфирует
+    if (t < enemy.frozenUntil) {
+      this.nextCastAt = Math.max(this.nextCastAt, enemy.frozenUntil + 400);
+      return;
+    }
+
     if (playerCharging && !this.reacted) {
       this.reacted = true;
       if (b.rng() < level.shieldReact) this.raiseShield();

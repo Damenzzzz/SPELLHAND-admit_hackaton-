@@ -4,6 +4,7 @@ import { LandmarkFilter } from '../vision/oneEuro';
 import { GESTURE_CONFIG as C } from './config';
 import { HandIdentity } from './handIdentity';
 import { applyPersonal } from './personal';
+import { RuneTracker, type RuneEvent } from './runes/tracker';
 import { MotionTrack } from './motion';
 import { TEMPLATES, TEMPLATE_BY_ID } from './templates';
 import type { ConstraintResult, GestureId, GestureTemplate, TemplateScore } from './types';
@@ -40,6 +41,7 @@ export type GestureEvent =
   | { type: 'misfire'; gesture: GestureId; id: string; text: string; t: number }
   /** Огненный шар держали слишком долго — взорвался в руке. */
   | { type: 'overcharge'; gesture: GestureId; t: number }
+  | RuneEvent
   | {
       type: 'nearMiss';
       gesture: GestureId;
@@ -63,6 +65,8 @@ export interface GestureSnapshot {
   charge: number;
   /** 0..1 — опасность перезаряда (после полного заряда до взрыва в руке). */
   overcharge: number;
+  /** Перо руны: опущено ли и след кончика (нормированные координаты кадра). */
+  rune: { penDown: boolean; trail: { x: number; y: number }[] };
   hint: Hint | null;
   debug: { growth: number; vx: number; vy: number; tipVy: number };
 }
@@ -135,6 +139,7 @@ export class GestureEngine {
   private keys: string[] = [];
   private listeners = new Set<Listener>();
   private identity = new HandIdentity();
+  private runes = new RuneTracker();
   private lastScores: Record<GestureId, TemplateScore> | null = null;
 
   // стабилизация
@@ -213,12 +218,21 @@ export class GestureEngine {
     applyPersonal(scores, hands);
     this.lastScores = scores;
 
+    // руна: пока перо опущено, обычные жесты не взводятся (росчерк ≠ огненный шар)
+    const rune = this.runes.update(hands, now);
+    if (rune.event) this.onRuneEvent(rune.event, now);
+    if (rune.penDown) {
+      this.candidate = null;
+      this.stable = 0;
+      if (this.active) this.deactivate(now, false);
+    }
+
     // лучший шаблон; двуручные в приоритете, если распознаны (две ладони = ветер/лечение, а не 2 огненных шара)
     const all = Object.values(scores).sort((a, b) => b.score - a.score);
     const twoHandTop = all.find((s) => TEMPLATE_BY_ID[s.id].hands === 2 && s.score >= C.recognize);
     const best = hands.length ? (twoHandTop ?? all[0]) : null;
 
-    this.stabilize(best, scores, keys, now);
+    if (!rune.penDown) this.stabilize(best, scores, keys, now);
     this.checkOvercharge(now);
 
     const activeIdx = this.active ? keys.indexOf(this.activeKey) : -1;
@@ -233,7 +247,7 @@ export class GestureEngine {
         ? Math.max(0, Math.min(1, (now - this.activeSince - C.chargeMaxMs) / (C.overchargeMs - C.chargeMaxMs)))
         : 0;
 
-    const hint = this.buildHint(hands, nearMissCandidate(scores), brightness, now);
+    const hint = rune.penDown ? null : this.buildHint(hands, nearMissCandidate(scores), brightness, now);
 
     const devActive = this.devHold;
     return {
@@ -248,9 +262,20 @@ export class GestureEngine {
       quality: devActive ? 0.92 : this.quality,
       charge: devActive === 'fireball' ? 1 : charge,
       overcharge: devActive ? 0 : overcharge,
+      rune: { penDown: rune.penDown, trail: rune.trail },
       hint,
       debug,
     };
+  }
+
+  private onRuneEvent(e: RuneEvent, now: number) {
+    this.emit(e);
+    if (e.type === 'runeFail') {
+      this.motionHint = {
+        until: now + 2000,
+        hint: { kind: 'motion', category: 'motion', lines: [e.reason], fingers: [], handIdx: -1, key: `rune:${now}` },
+      };
+    }
   }
 
   /** Перезаряд: шар держат дольше overchargeMs — срыв, поза снимается и блокируется. */

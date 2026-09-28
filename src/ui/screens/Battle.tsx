@@ -192,7 +192,7 @@ export function BattleScreen() {
         case 'reject':
           sfx.reject();
           toast(
-            `${FAIL_BADGE[e.kind].icon} ${TEMPLATES.find((t) => t.id === e.spell)?.name ?? ''}: ${e.reason}`,
+            `${FAIL_BADGE[e.kind].icon} ${e.name}: ${e.reason}`,
             e.kind === 'interrupted' ? 'bad' : 'info',
           );
           break;

@@ -2,7 +2,8 @@ import type { GestureId, SpellId } from '../gestures/types';
 import { BotAI } from './ai';
 import type { LevelDef } from './data/levels';
 import { COMBO, gradeOf, type GradeId } from './data/grades';
-import { COMBAT, SPELLS } from './data/spells';
+import { COMBAT, RUNE_COMBAT, SPELLS } from './data/spells';
+import { RUNES, type RuneId } from '../gestures/runes/runes';
 import type { Loadout } from './economy';
 
 export type Side = 'player' | 'enemy';
@@ -34,6 +35,8 @@ export interface Fighter {
   slowFactor: number;
   healing: { until: number; perMs: number } | null;
   interruptedUntil: number;
+  /** Заморожен (не может колдовать) до этого момента. */
+  frozenUntil: number;
 }
 
 export interface Projectile {
@@ -49,6 +52,10 @@ export interface Projectile {
   shieldDamage?: number;
   slow?: { factor: number; ms: number };
   interrupt?: boolean;
+  /** Большой снаряд (руна «Метеор») — для VFX. */
+  big?: boolean;
+  /** Заморозка цели (руна «Ледяная тюрьма»), действует сквозь щит. */
+  freezeMs?: number;
 }
 
 export type BattleEvent =
@@ -68,7 +75,9 @@ export type BattleEvent =
   | { type: 'parry'; side: Side; leadMs: number; projectile: Projectile }
   /** Почти парирование: deltaMs < 0 — рано, > 0 — поздно. */
   | { type: 'parryMiss'; side: Side; deltaMs: number }
-  | { type: 'reject'; spell: GestureId; reason: string; kind: RejectKind }
+  | { type: 'reject'; name: string; spell?: GestureId; reason: string; kind: RejectKind }
+  | { type: 'runeCast'; rune: RuneId; score: number; damage: number; projectile?: Projectile }
+  | { type: 'frozen'; side: Side; ms: number }
   | { type: 'hit'; target: Side; spell: SpellId; hpDamage: number; shieldDamage: number; blocked: boolean }
   | { type: 'shieldUp' | 'shieldDown' | 'shieldBreak' | 'shieldRestored'; side: Side }
   | { type: 'heal'; side: Side; amount: number }
@@ -92,6 +101,7 @@ function makeFighter(hp: number, shield: Omit<ShieldState, 'up' | 'brokenUntil' 
     slowFactor: 0,
     healing: null,
     interruptedUntil: 0,
+    frozenUntil: 0,
   };
 }
 
@@ -163,6 +173,59 @@ export class Battle {
     return Math.round(base * (COMBAT.qualityBase + COMBAT.qualityK * quality) * gradeOf(quality).mul * combo * mul);
   }
 
+  /** Руны делят один кулдаун. */
+  runeReadyAt = 0;
+
+  /**
+   * Руна-ультимейт, нарисованная в воздухе. score — точность росчерка ($P), влияет на силу,
+   * как качество жеста на обычные заклинания.
+   */
+  playerRune(rune: RuneId, score: number): boolean {
+    if (this.over) return false;
+    const def = RUNES[rune];
+    if (this.t < this.runeReadyAt) {
+      const reason = `Перезарядка рун ${((this.runeReadyAt - this.t) / 1000).toFixed(1)} с`;
+      this.emit({ type: 'reject', name: def.name, kind: 'cooldown', reason });
+      return false;
+    }
+    const cost = RUNE_COMBAT.mana * (this.loadout.staff.manaMul ?? 1);
+    if (this.player.mana < cost) {
+      this.emit({ type: 'reject', name: def.name, kind: 'mana', reason: `Нужно ${Math.round(cost)} маны` });
+      return false;
+    }
+    this.player.mana -= cost;
+    this.runeReadyAt = this.t + RUNE_COMBAT.cooldownMs;
+    const power = COMBAT.qualityBase + COMBAT.qualityK * Math.min(1, score / 0.8);
+    const shoot = (spell: SpellId, damage: number, travelMs: number, extra: Partial<Projectile> = {}) =>
+      this.spawn({
+        spell,
+        from: 'player',
+        to: 'enemy',
+        damage: Math.round(damage * power),
+        quality: score,
+        spawnT: this.t,
+        hitT: this.t + travelMs,
+        pierce: 0,
+        ...extra,
+      });
+
+    let projectile: Projectile | undefined;
+    if (rune === 'meteor') projectile = shoot('fireball', RUNE_COMBAT.meteor, 900, { big: true });
+    if (rune === 'chain') projectile = shoot('lightning', RUNE_COMBAT.chain, 120, { pierce: 1 });
+    if (rune === 'prison') projectile = shoot('ice', 4, 450, { freezeMs: RUNE_COMBAT.prisonMs, big: true });
+    if (rune === 'sphere') {
+      const sh = this.player.shield;
+      sh.brokenUntil = 0;
+      sh.durability = sh.max;
+      this.emit({ type: 'shieldRestored', side: 'player' });
+    }
+    if (rune === 'mend') {
+      this.player.healing = { until: this.t + RUNE_COMBAT.mendMs, perMs: RUNE_COMBAT.mendHp / RUNE_COMBAT.mendMs };
+    }
+    this.emit({ type: 'runeCast', rune, score, damage: projectile?.damage ?? 0, projectile });
+    return true;
+  }
+
   /** Перезаряд огненного шара: взрыв в руке игрока. */
   backfire(damage: number) {
     if (this.over) return;
@@ -189,7 +252,7 @@ export class Battle {
   playerCast(spell: SpellId, quality: number, charge: number, shard: number): boolean {
     if (this.over || spell === 'heal') return false;
     if (this.allowedSpells && !this.allowedSpells.includes(spell)) {
-      this.emit({ type: 'reject', spell, kind: 'interrupted', reason: 'Сегодня это заклинание запрещено' });
+      this.emit({ type: 'reject', spell, name: SPELLS[spell].name, kind: 'interrupted', reason: 'Сегодня это заклинание запрещено' });
       return false;
     }
     const def = SPELLS[spell];
@@ -206,18 +269,19 @@ export class Battle {
         this.emit({
           type: 'reject',
           spell,
+          name: SPELLS[spell].name,
           kind: 'cooldown',
           reason: `Перезарядка ${((readyAt - this.t) / 1000).toFixed(1)} с`,
         });
         return false;
       }
       if (spell === 'fireball' && this.t < this.player.interruptedUntil) {
-        this.emit({ type: 'reject', spell, kind: 'interrupted', reason: 'Заряд сбит ветром!' });
+        this.emit({ type: 'reject', spell, name: SPELLS[spell].name, kind: 'interrupted', reason: 'Заряд сбит ветром!' });
         return false;
       }
       const cost = def.mana * (staff.manaMul ?? 1);
       if (this.player.mana < cost) {
-        this.emit({ type: 'reject', spell, kind: 'mana', reason: 'Мало маны' });
+        this.emit({ type: 'reject', spell, name: SPELLS[spell].name, kind: 'mana', reason: 'Мало маны' });
         return false;
       }
       this.player.mana -= cost;
@@ -295,7 +359,7 @@ export class Battle {
         this.healRejected = true;
         const cooldown = this.t < readyAt;
         const reason = cooldown ? `Перезарядка ${((readyAt - this.t) / 1000).toFixed(1)} с` : 'Мало маны';
-        this.emit({ type: 'reject', spell: 'heal', kind: cooldown ? 'cooldown' : 'mana', reason });
+        this.emit({ type: 'reject', spell: 'heal', name: SPELLS.heal.name, kind: cooldown ? 'cooldown' : 'mana', reason });
       }
     }
     if (!heal) {
@@ -374,6 +438,13 @@ export class Battle {
     let hpDamage = 0;
     let shieldDamage = 0;
     const blocked = sh.up && !sh.brokenUntil;
+
+    // ледяная тюрьма замораживает сквозь щит
+    if (p.freezeMs) {
+      target.frozenUntil = this.t + p.freezeMs;
+      if (p.to === 'enemy') this.bot.interrupt();
+      this.emit({ type: 'frozen', side: p.to, ms: p.freezeMs });
+    }
 
     // парирование игрока: щит поднят в последний момент — снаряд летит обратно
     if (blocked && p.to === 'player') {

@@ -88,6 +88,17 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   },
 };
 
+/** Руны-ультимейты: общий кулдаун и сила (данные, не код). */
+export const RUNE_COMBAT = {
+  mana: 60,
+  cooldownMs: 12000,
+  meteor: 50,
+  chain: 35,
+  prisonMs: 4000,
+  mendHp: 35,
+  mendMs: 3000,
+};
+
 export const COMBAT = {
   hp: 100,
   mana: 100,

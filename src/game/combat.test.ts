@@ -180,3 +180,44 @@ describe('парирование щитом', () => {
     expect(b.player.hp).toBeLessThan(100);
   });
 });
+
+describe('руны в бою', () => {
+  it('метеор бьёт сильнее огненного шара, руны делят кулдаун и стоят 60 маны', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    const reasons: string[] = [];
+    b.on((e) => e.type === 'reject' && reasons.push(e.reason));
+    expect(b.playerRune('meteor', 0.9)).toBe(true);
+    expect(b.projectiles.at(-1)!.damage).toBeGreaterThan(35);
+    expect(b.player.mana).toBe(40);
+    expect(b.playerRune('chain', 0.9)).toBe(false);
+    expect(reasons[0]).toContain('Перезарядка рун');
+  });
+
+  it('ледяная тюрьма замораживает врага сквозь щит — бот молчит 4 с', () => {
+    const b = new Battle(LEVEL_BY_ID[9], loadout, seeded());
+    b.setShield('enemy', true);
+    b.playerRune('prison', 0.9);
+    step(b, 500);
+    expect(b.enemy.frozenUntil).toBeGreaterThan(b.t);
+    const hp = b.player.hp;
+    step(b, 3400);
+    expect(b.player.hp).toBe(hp);
+    expect(b.projectiles.filter((p) => p.from === 'enemy')).toHaveLength(0);
+  });
+
+  it('цепная молния пробивает щит полностью; сфера чинит сломанный щит', () => {
+    const b = new Battle(LEVEL_BY_ID[9], loadout, seeded());
+    b.setShield('enemy', true);
+    const hp = b.enemy.hp;
+    b.playerRune('chain', 0.9);
+    step(b, 200);
+    expect(hp - b.enemy.hp).toBeGreaterThan(25);
+
+    const c = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    c.player.shield.brokenUntil = 5000;
+    c.player.shield.durability = 0;
+    c.playerRune('sphere', 0.9);
+    expect(c.player.shield.brokenUntil).toBe(0);
+    expect(c.player.shield.durability).toBe(c.player.shield.max);
+  });
+});
