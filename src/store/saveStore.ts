@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GestureId } from '../gestures/types';
+import type { SessionRecord } from '../game/progress';
 import type { PersonalModel } from '../gestures/personal';
 import { randomNick } from '../net/nick';
 
@@ -28,6 +29,8 @@ export interface SaveData {
   online: { wins: number; losses: number };
   /** Персональная калибровка жестов (образцы формы руки). */
   personal?: PersonalModel;
+  /** История сессий для «Тренера». */
+  history?: SessionRecord[];
 }
 
 const DEFAULT_SAVE: SaveData = {

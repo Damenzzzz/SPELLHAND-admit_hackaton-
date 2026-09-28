@@ -6,6 +6,7 @@ import { gradeOf } from '../../game/data/grades';
 import { GHOST_LEVEL, LEVEL_BY_ID, onlineLevel } from '../../game/data/levels';
 import { SPELLS } from '../../game/data/spells';
 import { applyBattleResult, applyOnlineResult, currentLoadout } from '../../game/economy';
+import { recordSession } from '../../game/progress';
 import { sfx } from '../../game/sfx';
 import { BattleStats } from '../../game/stats';
 import { gestureEngine } from '../../gestures/matcher';
@@ -197,6 +198,7 @@ export function BattleScreen() {
               setup.kind === 'campaign'
                 ? applyBattleResult(level.id, won, sum.accuracy, battle.t)
                 : applyOnlineResult(won, sum.accuracy, level.reward, online);
+            recordSession({ mode: setup.kind, ...sum });
             // в глобальный лидерборд — фоном, без ожидания (dev-сессии и тесты не публикуем)
             if (!isDev) void import('../../net/leaderboard')
               .then(({ submitResult }) =>

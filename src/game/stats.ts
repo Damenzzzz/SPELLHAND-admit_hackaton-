@@ -27,6 +27,8 @@ export interface BattleResult {
   attempts: number;
   perSpell: Partial<Record<GestureId, SpellStat>>;
   topErrors: ErrorStat[];
+  /** Все ошибки за бой: id ограничения/осечки → сколько раз. */
+  errorCounts: Record<string, number>;
   advice: string[];
   coins: number;
   firstWin: boolean;
@@ -91,7 +93,10 @@ export class BattleStats {
     else this.errors.set(id, { id, text, count: 1, gesture });
   }
 
-  summary(): Pick<BattleResult, 'accuracy' | 'casts' | 'attempts' | 'perSpell' | 'topErrors' | 'advice'> {
+  summary(): Pick<
+    BattleResult,
+    'accuracy' | 'casts' | 'attempts' | 'perSpell' | 'topErrors' | 'advice' | 'errorCounts'
+  > {
     const perSpell: Partial<Record<GestureId, SpellStat>> = {};
     let casts = 0;
     for (const [g, arr] of this.quality) {
@@ -107,6 +112,7 @@ export class BattleStats {
       perSpell,
       topErrors,
       advice: topErrors.slice(0, 2).map((e) => adviceFor(e.id)),
+      errorCounts: Object.fromEntries([...this.errors.values()].map((e) => [e.id, e.count])),
     };
   }
 }
