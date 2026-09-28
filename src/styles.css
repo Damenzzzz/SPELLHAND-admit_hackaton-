@@ -174,7 +174,7 @@ body {
 /* --- dev-панель --- */
 .dev-panel {
   position: fixed;
-  left: 8px;
+  right: 8px;
   bottom: 8px;
   z-index: 100;
   width: 300px;
@@ -567,3 +567,4 @@ body {
 @media (max-width: 760px), (orientation: portrait) {
   .level-grid { grid-template-columns: repeat(2, 1fr); }
 }
+.battle .hint-card { bottom: 76px; }

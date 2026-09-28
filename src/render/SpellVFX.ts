@@ -259,11 +259,12 @@ export class SpellVfx {
     ctx.beginPath();
     ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2);
     ctx.stroke();
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
+    // руны: короткие радиальные засечки между кольцами
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
       ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * r * 0.78, Math.sin(a) * r * 0.78);
-      ctx.lineTo(Math.cos(a + 0.4) * r * 0.9, Math.sin(a + 0.4) * r * 0.9);
+      ctx.moveTo(Math.cos(a) * r * 0.82, Math.sin(a) * r * 0.82);
+      ctx.lineTo(Math.cos(a) * r * 0.93, Math.sin(a) * r * 0.93);
       ctx.stroke();
     }
     ctx.rotate(-time / 1500);
