@@ -663,3 +663,10 @@ img.shop-icon { width: 110px; height: 110px; object-fit: contain; }
   .hud-player { width: calc(100% - 24px); }
   .sound-badge { font-size: 11px; max-width: 70vw; text-align: center; }
 }
+
+/* --- dev: запись жестов --- */
+.dev-rec-btn { position: fixed; right: 8px; top: 8px; z-index: 101; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--danger); background: rgba(0, 0, 0, 0.75); color: #fff; cursor: pointer; }
+.recorder { position: fixed; left: 50%; top: 12px; transform: translateX(-50%); z-index: 102; width: min(560px, 92vw); padding: 14px 16px; border-radius: 12px; background: rgba(0, 0, 0, 0.85); border: 1px solid var(--danger); text-align: center; }
+.recorder button { margin: 4px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--muted); background: #222; color: #fff; cursor: pointer; }
+.recorder-step { color: var(--danger); font-weight: 700; }
+.recorder-text { margin-top: 6px; font-size: 20px; font-weight: 700; }

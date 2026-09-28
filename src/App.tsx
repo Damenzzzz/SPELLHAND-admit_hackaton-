@@ -1,6 +1,8 @@
 import { isDev } from './dev';
 import { useGame } from './store/gameStore';
+import { useState } from 'react';
 import { DevPanel, useDevKeys } from './ui/DevPanel';
+import { RecorderOverlay } from './ui/RecorderOverlay';
 import { SoundBadge } from './ui/SoundBadge';
 import { Academy } from './ui/screens/Academy';
 import { BattleScreen } from './ui/screens/Battle';
@@ -14,7 +16,19 @@ import { Shop } from './ui/screens/Shop';
 
 function DevTools() {
   useDevKeys();
-  return <DevPanel />;
+  const [rec, setRec] = useState(false);
+  return (
+    <>
+      <DevPanel />
+      {rec ? (
+        <RecorderOverlay onClose={() => setRec(false)} />
+      ) : (
+        <button className="dev-rec-btn" onClick={() => setRec(true)}>
+          ⏺ Записать жесты
+        </button>
+      )}
+    </>
+  );
 }
 
 export function App() {
