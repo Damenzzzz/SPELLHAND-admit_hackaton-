@@ -1,0 +1,474 @@
+{
+  "model": "gemini-3.1-flash-image",
+  "styleRef": "menu_bg",
+  "assets": [
+    {
+      "id": "menu_bg",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1600,
+        900
+      ],
+      "out": "public/assets/images/menu_bg.webp",
+      "status": "done",
+      "prompt": "a grand wizard academy hall at night, floating candles, tall arched windows with a starry sky, magic circles glowing on the stone floor, bookshelves, depth and atmosphere, calm composition with open center"
+    },
+    {
+      "id": "logo",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "16:9",
+      "size": [
+        1200,
+        675
+      ],
+      "out": "public/assets/images/logo.webp",
+      "status": "done",
+      "prompt": "game logo with the exact word \"SPELLHAND\" in bold ornate fantasy capital letters, gold metal lettering with arcane blue glow, a glowing hand silhouette with sparks integrated into the letter A. The ONLY text is SPELLHAND, spelled correctly"
+    },
+    {
+      "id": "arena_forest",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/forest.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena at a moonlit forest edge, ancient trees, fireflies, mossy stone circle in the center, no characters"
+    },
+    {
+      "id": "arena_bridge",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/bridge.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena on an old stone bridge over a misty river gorge at dusk, lanterns, no characters"
+    },
+    {
+      "id": "arena_cave",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/cave.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena inside a frozen ice cave, blue crystal formations, icicles, frosty floor, no characters"
+    },
+    {
+      "id": "arena_swamp",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/swamp.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena in a foggy swamp, twisted roots, glowing green mushrooms, wooden platform in the center, no characters"
+    },
+    {
+      "id": "arena_tower",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/tower.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena at the top of a tower of mirrors, floating mirror shards reflecting violet light, polished floor, no characters"
+    },
+    {
+      "id": "arena_cliff",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/cliff.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena on a stormy sea cliff, dark thunderclouds, distant lightning, rune stones, no characters"
+    },
+    {
+      "id": "arena_wastes",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/wastes.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena in windswept desert wastes, swirling sand, broken pillars, amber sky, no characters"
+    },
+    {
+      "id": "arena_crypt",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/crypt.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena in an ancient necropolis crypt, tombs, ghostly teal candles, cobwebs, no characters"
+    },
+    {
+      "id": "arena_abyss",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/abyss.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena at the gates of the abyss, crimson portal, lava cracks, obsidian floor, no characters"
+    },
+    {
+      "id": "arena_throne",
+      "type": "image",
+      "bg": "scene",
+      "aspect": "16:9",
+      "size": [
+        1280,
+        720
+      ],
+      "out": "public/assets/images/arenas/throne.webp",
+      "status": "todo",
+      "prompt": "empty magical duel arena in the archmage's throne hall, huge golden astrolabe, starry vaulted ceiling, purple and gold banners, no characters"
+    },
+    {
+      "id": "enemy_1",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/1.webp",
+      "status": "done",
+      "prompt": "bust portrait of a young renegade apprentice wizard with a torn hood and a sly grin, holding a small wand, facing the viewer, character portrait"
+    },
+    {
+      "id": "enemy_2",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/2.webp",
+      "status": "todo",
+      "prompt": "bust portrait of a mischievous fire imp with small horns, ember skin and flames for hair, facing the viewer, character portrait"
+    },
+    {
+      "id": "enemy_3",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/3.webp",
+      "status": "todo",
+      "prompt": "bust portrait of an elegant snow witch with pale blue skin, ice crown and frosty white hair, facing the viewer, character portrait"
+    },
+    {
+      "id": "enemy_4",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/4.webp",
+      "status": "todo",
+      "prompt": "bust portrait of a swamp troll shaman with mossy skin, bone necklace and a glowing green eye, facing the viewer, character portrait"
+    },
+    {
+      "id": "enemy_5",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/5.webp",
+      "status": "todo",
+      "prompt": "bust portrait of a mirror guardian golem boss made of polished silver and violet mirror shards, glowing eyes, imposing, facing the viewer, character portrait"
+    },
+    {
+      "id": "enemy_6",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/6.webp",
+      "status": "todo",
+      "prompt": "bust portrait of a thunder priest in dark robes with gold trims, crackling lightning around his hands and eyes, facing the viewer, character portrait"
+    },
+    {
+      "id": "enemy_7",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/7.webp",
+      "status": "todo",
+      "prompt": "bust portrait of a masked storm nomad with flowing scarves caught in wind, sand-colored clothes, facing the viewer, character portrait"
+    },
+    {
+      "id": "enemy_8",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/8.webp",
+      "status": "todo",
+      "prompt": "bust portrait of a lich with a skull face, ornate dark crown and teal soul fire in the eye sockets, facing the viewer, character portrait"
+    },
+    {
+      "id": "enemy_9",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/9.webp",
+      "status": "todo",
+      "prompt": "bust portrait of a demon gate guardian with crimson skin, large curved horns and molten armor, facing the viewer, character portrait"
+    },
+    {
+      "id": "enemy_10",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/enemies/10.webp",
+      "status": "todo",
+      "prompt": "bust portrait of Archmage Morven, the final boss: an old powerful sorcerer with a long silver beard, violet and gold robes, glowing arcane eyes and floating runes, facing the viewer, character portrait"
+    },
+    {
+      "id": "spell_fireball",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        256,
+        256
+      ],
+      "out": "public/assets/images/spells/fireball.webp",
+      "status": "done",
+      "prompt": "game spell icon: a blazing fireball, centered, bold shape"
+    },
+    {
+      "id": "spell_ice",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        256,
+        256
+      ],
+      "out": "public/assets/images/spells/ice.webp",
+      "status": "todo",
+      "prompt": "game spell icon: three sharp ice shards flying together, centered, bold shape"
+    },
+    {
+      "id": "spell_lightning",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        256,
+        256
+      ],
+      "out": "public/assets/images/spells/lightning.webp",
+      "status": "todo",
+      "prompt": "game spell icon: a jagged yellow lightning bolt, centered, bold shape"
+    },
+    {
+      "id": "spell_wind",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        256,
+        256
+      ],
+      "out": "public/assets/images/spells/wind.webp",
+      "status": "todo",
+      "prompt": "game spell icon: a swirling gust of wind vortex in mint colors, centered, bold shape"
+    },
+    {
+      "id": "spell_heal",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        256,
+        256
+      ],
+      "out": "public/assets/images/spells/heal.webp",
+      "status": "todo",
+      "prompt": "game spell icon: glowing green healing leaf with a soft heart-shaped light, centered, bold shape"
+    },
+    {
+      "id": "spell_shield",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        256,
+        256
+      ],
+      "out": "public/assets/images/spells/shield.webp",
+      "status": "todo",
+      "prompt": "game spell icon: a round magical rune shield glowing blue, centered, bold shape"
+    },
+    {
+      "id": "staff_apprentice",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        384,
+        384
+      ],
+      "out": "public/assets/images/staffs/staff_apprentice.webp",
+      "status": "todo",
+      "prompt": "concept art of a simple apprentice wizard staff, plain light wood with a curled top holding a small blue orb, full staff visible vertically, side view"
+    },
+    {
+      "id": "staff_oak",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        384,
+        384
+      ],
+      "out": "public/assets/images/staffs/staff_oak.webp",
+      "status": "todo",
+      "prompt": "concept art of a gnarled oak wizard staff with twisting branches cradling a glowing amber fire orb, a few green leaves, full staff visible vertically, side view"
+    },
+    {
+      "id": "staff_ice",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        384,
+        384
+      ],
+      "out": "public/assets/images/staffs/staff_ice.webp",
+      "status": "todo",
+      "prompt": "concept art of an ice crystal wizard staff, pale silver-blue shaft topped with a cluster of glowing cyan ice crystals, full staff visible vertically, side view"
+    },
+    {
+      "id": "staff_thunder",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        384,
+        384
+      ],
+      "out": "public/assets/images/staffs/staff_thunder.webp",
+      "status": "todo",
+      "prompt": "concept art of a thunder wizard staff, dark iron shaft with gold bands, forked prongs holding a crackling yellow energy sphere, full staff visible vertically, side view"
+    },
+    {
+      "id": "staff_archmage",
+      "type": "image",
+      "bg": "chroma",
+      "aspect": "1:1",
+      "size": [
+        384,
+        384
+      ],
+      "out": "public/assets/images/staffs/staff_archmage.webp",
+      "status": "todo",
+      "prompt": "concept art of the archmage staff, ornate white and gold shaft with a crescent moon ring around a floating violet orb and small orbiting stars, full staff visible vertically, side view"
+    },
+    {
+      "id": "rune_basic",
+      "type": "image",
+      "bg": "black",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/runes/shield_basic.webp",
+      "status": "todo",
+      "prompt": "a glowing circular magic rune shield seen from the front, blue concentric rings with simple runic symbols, top-down flat, perfectly centered circle"
+    },
+    {
+      "id": "rune_rune",
+      "type": "image",
+      "bg": "black",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/runes/shield_rune.webp",
+      "status": "todo",
+      "prompt": "a glowing circular magic rune shield seen from the front, intricate cyan runic script rings and a hexagram, top-down flat, perfectly centered circle"
+    },
+    {
+      "id": "rune_aegis",
+      "type": "image",
+      "bg": "black",
+      "aspect": "1:1",
+      "size": [
+        512,
+        512
+      ],
+      "out": "public/assets/images/runes/shield_aegis.webp",
+      "status": "todo",
+      "prompt": "a glowing circular holy aegis shield seen from the front, radiant golden rings with sun rays and ornate runes, top-down flat, perfectly centered circle"
+    }
+  ]
+}
