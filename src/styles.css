@@ -617,3 +617,4 @@ img.shop-icon { width: 110px; height: 110px; object-fit: contain; }
   50% { filter: drop-shadow(0 0 26px rgba(255, 127, 208, 0.55)); }
 }
 .enemy-casting .enemy-img { filter: drop-shadow(0 0 30px rgba(255, 127, 208, 0.9)); animation: none; }
+img.rune-icon { mix-blend-mode: screen; }

@@ -68,7 +68,7 @@ export function Shop() {
               <AssetImg
                 src={item.kind === 'staff' ? ASSETS.staffIcon(item.id) : ASSETS.rune(item.id)}
                 fallback={item.icon}
-                className="shop-icon"
+                className={`shop-icon ${item.kind === 'shield' ? 'rune-icon' : ''}`}
               />
               <span className="shop-name">{item.name}</span>
               <small>{item.effect}</small>

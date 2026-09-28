@@ -441,7 +441,7 @@
         512
       ],
       "out": "public/assets/images/runes/shield_basic.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "a glowing circular magic rune shield seen from the front, blue concentric rings with simple runic symbols, top-down flat, perfectly centered circle"
     },
     {
@@ -467,7 +467,7 @@
         512
       ],
       "out": "public/assets/images/runes/shield_aegis.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "a glowing circular holy aegis shield seen from the front, radiant golden rings with sun rays and ornate runes, top-down flat, perfectly centered circle"
     }
   ]
