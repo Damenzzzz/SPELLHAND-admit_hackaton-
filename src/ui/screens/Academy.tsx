@@ -107,7 +107,7 @@ function Training({ gesture }: { gesture: GestureId }) {
 
   return (
     <div className="split-screen">
-      <CameraView className="split-camera">
+      <CameraView className="split-camera" staff>
         <HintCard compact />
         {toast && <div className="toast">{toast}</div>}
       </CameraView>

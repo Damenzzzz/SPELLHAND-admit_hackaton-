@@ -239,7 +239,7 @@ export function BattleScreen() {
   return (
     <div ref={rootRef} className={`battle arena-${level.arena}`}>
       <div ref={camRef} className="battle-player">
-        <CameraView className="battle-camera">
+        <CameraView className="battle-camera" staff>
           <div className="hud hud-player">
             <Bar value={player.hp} max={player.maxHp} className="bar-hp" />
             <Bar value={player.mana} max={player.maxMana} className="bar-mana" />

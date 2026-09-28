@@ -9,7 +9,8 @@ interface AssetsState {
 
 export const useAssets = create<AssetsState>(() => ({
   loaded: 0,
-  total: PRELOAD_IMAGES.length + PRELOAD_MODELS.length,
+  // +1 — JS-чанк three.js для AR-посоха
+  total: PRELOAD_IMAGES.length + PRELOAD_MODELS.length + 1,
   failed: [],
 }));
 
@@ -48,7 +49,15 @@ let started = false;
 export function preloadAssets() {
   if (started) return;
   started = true;
-  const jobs = [...PRELOAD_IMAGES.map((u) => () => loadImage(u)), ...PRELOAD_MODELS.map((u) => () => loadBinary(u))];
+  const jobs = [
+    ...PRELOAD_IMAGES.map((u) => () => loadImage(u)),
+    ...PRELOAD_MODELS.map((u) => () => loadBinary(u)),
+    () =>
+      import('../render/StaffAttachment').then(
+        () => done('three-chunk', true),
+        () => done('three-chunk', false),
+      ),
+  ];
   // 6 параллельных загрузок
   const next = async (): Promise<void> => {
     const job = jobs.shift();

@@ -468,7 +468,7 @@ body {
 
 .charge-meter {
   position: absolute;
-  top: 100px;
+  top: 128px;
   left: 12px;
   width: min(300px, 60%);
   height: 26px;
