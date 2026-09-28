@@ -170,6 +170,15 @@ export class SpellVfx {
       case 'frozen':
         this.burst(e.side === 'enemy' ? layout.enemy : layout.playerCenter, '#bfefff', 36, 180, 'shard', 7);
         break;
+      case 'dodge':
+        this.floatText({ x: layout.playerCenter.x, y: layout.playerCenter.y - 80 }, 'УКЛОНЕНИЕ', '#b6f5d8');
+        break;
+      case 'dodged':
+        this.burst(layout.playerCenter, '#b6f5d8', 16, 240);
+        break;
+      case 'meditate':
+        this.burst(layout.playerCenter, '#5fa8ff', 40, 160);
+        break;
       case 'parry': {
         // отражённый снаряд вылетает из руки игрока
         this.origins.set(e.projectile.id, { ...layout.playerHand });

@@ -1,21 +1,26 @@
 /// <reference lib="webworker" />
-import type { HandLandmarker } from '@mediapipe/tasks-vision';
-import { createHandLandmarker, toTrackedHands } from './landmarker';
+import type { HandLandmarker, PoseLandmarker } from '@mediapipe/tasks-vision';
+import { createHandLandmarker, createPoseLandmarker, toPose, toTrackedHands } from './landmarker';
+import type { PosePoint } from './pose';
 
 /**
- * Детекция рук в Web Worker: главный поток шлёт ImageBitmap кадра (transfer, без копии),
- * воркер возвращает landmarks. Главный поток не блокируется инференсом и GPU-readback.
+ * Детекция в Web Worker: главный поток шлёт ImageBitmap кадра (transfer, без копии),
+ * воркер возвращает landmarks рук (и позы, если включена). Главный поток не блокируется
+ * инференсом и GPU-readback.
  */
 export type WorkerIn =
   | { type: 'init'; wasm: string; model: string }
-  | { type: 'frame'; bitmap: ImageBitmap; t: number };
+  | { type: 'enablePose'; wasm: string; model: string }
+  | { type: 'frame'; bitmap: ImageBitmap; t: number; pose: boolean };
 
 export type WorkerOut =
   | { type: 'ready'; delegate: 'GPU' | 'CPU' }
+  | { type: 'poseReady'; ok: boolean }
   | { type: 'error'; message: string }
-  | { type: 'result'; t: number; hands: ReturnType<typeof toTrackedHands> };
+  | { type: 'result'; t: number; hands: ReturnType<typeof toTrackedHands>; pose: PosePoint[] | null };
 
 let lm: HandLandmarker | null = null;
+let pose: PoseLandmarker | null = null;
 const post = (m: WorkerOut) => (self as unknown as DedicatedWorkerGlobalScope).postMessage(m);
 
 self.onmessage = async (e: MessageEvent<WorkerIn>) => {
@@ -30,10 +35,20 @@ self.onmessage = async (e: MessageEvent<WorkerIn>) => {
     }
     return;
   }
+  if (msg.type === 'enablePose') {
+    try {
+      pose ??= await createPoseLandmarker(msg.wasm, msg.model);
+      post({ type: 'poseReady', ok: true });
+    } catch {
+      post({ type: 'poseReady', ok: false });
+    }
+    return;
+  }
   if (msg.type === 'frame') {
     try {
       const hands = lm ? toTrackedHands(lm.detectForVideo(msg.bitmap, msg.t)) : [];
-      post({ type: 'result', t: msg.t, hands });
+      const body = msg.pose && pose ? toPose(pose.detectForVideo(msg.bitmap, msg.t)) : null;
+      post({ type: 'result', t: msg.t, hands, pose: body });
     } catch (err) {
       post({ type: 'error', message: String((err as Error)?.message ?? err) });
     } finally {

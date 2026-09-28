@@ -120,4 +120,14 @@ export const COMBAT = {
   parryHintMs: 500,
   /** Урон себе при перезаряде огненного шара. */
   backfireDamage: 8,
+  // --- жесты телом (Pose) ---
+  /** Уклонение наклоном: неуязвимость и перезарядка. */
+  dodgeIframesMs: 350,
+  dodgeCooldownMs: 1500,
+  /** Скрещённые руки — супер-щит: доля износа и доля отражённого урона. */
+  superShieldWear: 0.5,
+  superShieldReflect: 0.3,
+  /** Руки вверх — медитация. */
+  meditateMana: 40,
+  meditateCooldownMs: 20000,
 };

@@ -20,6 +20,7 @@ import { coverBox } from '../../render/HandOverlay';
 import { SpellVfx, type VfxLayout } from '../../render/SpellVFX';
 import { useGame } from '../../store/gameStore';
 import { useGesture } from '../../store/gestureStore';
+import { poseEvents, usePose } from '../../store/poseStore';
 import { updateSave, useSave } from '../../store/saveStore';
 import { useVision } from '../../store/visionStore';
 import { AssetImg } from '../AssetImg';
@@ -183,6 +184,16 @@ export function BattleScreen() {
         case 'frozen':
           if (e.side === 'enemy') toast(`🧊 ${level.enemyName} заморожен`, 'good');
           break;
+        case 'dodge':
+          sfx.cast('wind');
+          break;
+        case 'dodged':
+          toast('🌀 Уклонение! Снаряд мимо', 'good');
+          break;
+        case 'meditate':
+          sfx.cast('heal');
+          toast(`🧘 Медитация: +${e.mana} маны`, 'good');
+          break;
         case 'parry':
           sfx.block();
           sfx.cast('lightning');
@@ -277,6 +288,13 @@ export function BattleScreen() {
     };
     const offBattle = battle.on(onBattle);
 
+    // жесты всем телом: наклон — уклонение, руки вверх — медитация
+    const offPose = poseEvents.on((e) => {
+      if (phaseNow !== 'fight') return;
+      if (e.type === 'dodge') battle.dodge();
+      if (e.type === 'armsUp') battle.meditate();
+    });
+
     const start = performance.now();
     let last = start;
     let lastHud = 0;
@@ -327,7 +345,8 @@ export function BattleScreen() {
       const snap = useGesture.getState().snap;
       const active = snap?.active ?? null;
       if (phaseNow === 'fight') {
-        battle.setPlayerHolds(active === 'shield', active === 'heal');
+        const pose = usePose.getState();
+        battle.setPlayerHolds(active === 'shield', active === 'heal', pose.active && pose.state.crossed);
         battle.tick(dt, active === 'fireball' || active === 'lightning');
         stats.shieldTick(battle.t, gestureQuality());
       }
@@ -378,6 +397,7 @@ export function BattleScreen() {
       clearTimeout(endTimer);
       offGesture();
       offBattle();
+      offPose();
       removeEventListener('keydown', esc);
       gestureEngine.setDevHold(null);
       // StrictMode в dev пересоздаёт эффект — канал закрываем только при реальном уходе с экрана

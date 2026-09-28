@@ -86,6 +86,9 @@ export type BattleEvent =
   | { type: 'comboCast'; name: string; bonus: number }
   | { type: 'burn'; side: Side; on: boolean }
   | { type: 'blownAway'; count: number }
+  | { type: 'dodge' }
+  | { type: 'dodged'; spell: SpellId }
+  | { type: 'meditate'; mana: number }
   | { type: 'hit'; target: Side; spell: SpellId; hpDamage: number; shieldDamage: number; blocked: boolean }
   | { type: 'shieldUp' | 'shieldDown' | 'shieldBreak' | 'shieldRestored'; side: Side }
   | { type: 'heal'; side: Side; amount: number }
@@ -180,6 +183,42 @@ export class Battle {
     const mul = (staff.spellMul?.[spell] ?? 1) * (staff.allMul ?? 1);
     const combo = 1 + COMBO.stepBonus * Math.min(this.combo, COMBO.maxSteps);
     return Math.round(base * (COMBAT.qualityBase + COMBAT.qualityK * quality) * gradeOf(quality).mul * combo * mul);
+  }
+
+  // жесты телом
+  private dodgeUntil = -Infinity;
+  private dodgeReadyAt = 0;
+  private meditateReadyAt = 0;
+  /** Скрещённые руки держатся — щит становится супер-щитом. */
+  superShield = false;
+
+  /** Наклон корпуса: короткая неуязвимость к снарядам. */
+  dodge(): boolean {
+    if (this.over) return false;
+    if (this.t < this.dodgeReadyAt) {
+      const reason = `перезарядка ${((this.dodgeReadyAt - this.t) / 1000).toFixed(1)} с`;
+      this.emit({ type: 'reject', name: 'Уклонение', kind: 'cooldown', reason });
+      return false;
+    }
+    this.dodgeUntil = this.t + COMBAT.dodgeIframesMs;
+    this.dodgeReadyAt = this.t + COMBAT.dodgeCooldownMs;
+    this.emit({ type: 'dodge' });
+    return true;
+  }
+
+  /** Руки вверх: восстановление маны. */
+  meditate(): boolean {
+    if (this.over) return false;
+    if (this.t < this.meditateReadyAt) {
+      const reason = `перезарядка ${Math.ceil((this.meditateReadyAt - this.t) / 1000)} с`;
+      this.emit({ type: 'reject', name: 'Медитация', kind: 'cooldown', reason });
+      return false;
+    }
+    const before = this.player.mana;
+    this.player.mana = Math.min(this.player.maxMana, this.player.mana + COMBAT.meditateMana);
+    this.meditateReadyAt = this.t + COMBAT.meditateCooldownMs;
+    this.emit({ type: 'meditate', mana: Math.round(this.player.mana - before) });
+    return true;
   }
 
   /** Последнее заклинание игрока — для комбо. */
@@ -390,7 +429,7 @@ export class Battle {
   }
 
   /** Удерживаемые позы игрока: щит и лечение. */
-  setPlayerHolds(shield: boolean, heal: boolean) {
+  setPlayerHolds(shield: boolean, heal: boolean, superShield = false) {
     if (this.over) return;
     const p = this.player;
 
@@ -420,7 +459,8 @@ export class Battle {
       this.healRejected = false;
     }
 
-    const canShield = shield && !p.healing && !p.shield.brokenUntil;
+    const canShield = (shield || superShield) && !p.healing && !p.shield.brokenUntil;
+    this.superShield = superShield && canShield;
     this.setShield('player', canShield);
   }
 
@@ -499,6 +539,12 @@ export class Battle {
     let shieldDamage = 0;
     const blocked = sh.up && !sh.brokenUntil;
 
+    // уклонение: снаряд пролетает мимо
+    if (p.to === 'player' && this.t <= this.dodgeUntil) {
+      this.emit({ type: 'dodged', spell: p.spell });
+      return;
+    }
+
     // ледяная тюрьма замораживает сквозь щит
     if (p.freezeMs) {
       target.frozenUntil = this.t + p.freezeMs;
@@ -521,6 +567,14 @@ export class Battle {
       // контр-логика: щит гасит огонь и лёд, молния пробивает часть, ветер бьёт по щиту
       shieldDamage = p.shieldDamage ?? p.damage * (1 - p.pierce);
       hpDamage = p.shieldDamage ? 0 : p.damage * p.pierce;
+      const superHit = p.to === 'player' && this.superShield;
+      if (superHit) {
+        // супер-щит (скрещённые руки): меньше износа и часть урона летит обратно
+        const back = Math.round(shieldDamage * COMBAT.superShieldReflect);
+        shieldDamage *= COMBAT.superShieldWear;
+        this.enemy.hp = Math.max(0, this.enemy.hp - back);
+        if (back > 0) this.emit({ type: 'reflect', side: 'enemy', amount: back });
+      }
       sh.durability -= shieldDamage;
       if (sh.durability <= 0) {
         if (!p.shieldDamage) hpDamage += -sh.durability;

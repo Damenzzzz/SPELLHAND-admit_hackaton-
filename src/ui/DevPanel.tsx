@@ -4,6 +4,7 @@ import { gestureEngine } from '../gestures/matcher';
 import { TEMPLATES } from '../gestures/templates';
 import type { GestureId } from '../gestures/types';
 import { useGesture } from '../store/gestureStore';
+import { poseEvents } from '../store/poseStore';
 
 const CAST_KEYS: Record<string, GestureId> = { f: 'fireball', i: 'ice', l: 'lightning', w: 'wind' };
 const HOLD_KEYS: Record<string, GestureId> = { h: 'heal', s: 'shield' };
@@ -17,6 +18,8 @@ export function useDevKeys() {
     };
     const up = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
+      if (k === 'd') poseEvents.emit({ type: 'dodge', dir: 'left', t: performance.now() });
+      if (k === 'm') poseEvents.emit({ type: 'armsUp', t: performance.now() });
       if (HOLD_KEYS[k]) gestureEngine.setDevHold(null);
       if (CAST_KEYS[k]) gestureEngine.devCast(CAST_KEYS[k]);
     };
@@ -83,7 +86,7 @@ export function DevPanel() {
           {f2(snap.debug.tipVy)}
         </div>
       )}
-      <div className="dev-keys">F/I/L/W — каст · H/S — держать</div>
+      <div className="dev-keys">F/I/L/W — каст · H/S — держать · D уклон · M медит.</div>
     </div>
   );
 }

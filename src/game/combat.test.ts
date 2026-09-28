@@ -274,3 +274,39 @@ describe('стихии и комбо', () => {
     expect(b.projectiles.at(-1)!.damage).toBeGreaterThan(plain);
   });
 });
+
+describe('жесты телом в бою', () => {
+  it('уклонение перед попаданием — снаряд мимо; сразу повторить нельзя', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    b.enemyCast('fireball');
+    step(b, 500);
+    expect(b.dodge()).toBe(true);
+    step(b, 300);
+    expect(b.player.hp).toBe(100);
+    expect(b.dodge()).toBe(false);
+  });
+
+  it('супер-щит изнашивается вдвое меньше и отражает часть урона', () => {
+    const plain = new Battle(LEVEL_BY_ID[6], loadout, seeded());
+    plain.setPlayerHolds(true, false);
+    step(plain, 600); // щит заранее — не парирование
+    plain.enemyCast('lightning');
+    step(plain, 300);
+    const sup = new Battle(LEVEL_BY_ID[6], loadout, seeded());
+    sup.setPlayerHolds(false, false, true);
+    step(sup, 600);
+    const enemyHp = sup.enemy.hp;
+    sup.enemyCast('lightning');
+    step(sup, 300);
+    expect(sup.player.shield.durability).toBeGreaterThan(plain.player.shield.durability);
+    expect(sup.enemy.hp).toBeLessThan(enemyHp);
+  });
+
+  it('медитация даёт ману раз в 20 с', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    b.player.mana = 10;
+    expect(b.meditate()).toBe(true);
+    expect(b.player.mana).toBe(50);
+    expect(b.meditate()).toBe(false);
+  });
+});

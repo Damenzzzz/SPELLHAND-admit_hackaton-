@@ -35,6 +35,8 @@ export interface SaveData {
   rushBest?: number;
   /** Лучший результат испытания дня. */
   dailyBest?: { id: string; score: number };
+  /** Жесты всем телом (Pose Landmarker). По умолчанию выключены (Академия → «Тело»). */
+  poseEnabled?: boolean;
 }
 
 const DEFAULT_SAVE: SaveData = {

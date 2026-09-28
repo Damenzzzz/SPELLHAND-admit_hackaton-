@@ -6,6 +6,7 @@ import { RecorderOverlay } from './ui/RecorderOverlay';
 import { SoundBadge } from './ui/SoundBadge';
 import { Academy } from './ui/screens/Academy';
 import { BattleScreen } from './ui/screens/Battle';
+import { BodyAcademy } from './ui/screens/BodyAcademy';
 import { Calibration } from './ui/screens/Calibration';
 import { Campaign } from './ui/screens/Campaign';
 import { Coach } from './ui/screens/Coach';
@@ -54,6 +55,7 @@ export function App() {
       {screen === 'rush' && <Rush />}
       {screen === 'daily' && <Daily />}
       {screen === 'runes' && <RuneAcademy />}
+      {screen === 'body' && <BodyAcademy />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>
