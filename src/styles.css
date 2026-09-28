@@ -609,3 +609,11 @@ img.shop-icon { width: 110px; height: 110px; object-fit: contain; }
   .spell-slot .spell-img { width: 28px; height: 28px; }
   img.level-portrait { width: 64px; height: 64px; }
 }
+.staff-preview { display: flex; align-items: center; gap: 12px; height: 150px; color: var(--muted); }
+.staff-preview > div { width: 120px !important; height: 150px !important; }
+.enemy-img { animation: enemy-glow 3s ease-in-out infinite; }
+@keyframes enemy-glow {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(95, 168, 255, 0.35)); }
+  50% { filter: drop-shadow(0 0 26px rgba(255, 127, 208, 0.55)); }
+}
+.enemy-casting .enemy-img { filter: drop-shadow(0 0 30px rgba(255, 127, 208, 0.9)); animation: none; }

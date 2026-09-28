@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { ASSETS } from '../../game/data/assets';
 import { SHIELDS, STAFFS, type ItemDef } from '../../game/data/items';
 import { buyItem, equipItem } from '../../game/economy';
@@ -9,6 +9,8 @@ import { AssetImg } from '../AssetImg';
 import { CoinBadge } from '../CoinBadge';
 import { DwellButton } from '../DwellButton';
 import { ScreenShell } from '../ScreenShell';
+
+const StaffPreview = lazy(() => import('../../render/StaffPreview'));
 
 /** Магазин: покупка и экипировка посохов и щитов наведением пальца. */
 export function Shop() {
@@ -45,6 +47,14 @@ export function Shop() {
           🛡️ Щиты
         </DwellButton>
       </div>
+      {tab === 'staff' && (
+        <div className="staff-preview">
+          <Suspense fallback={null}>
+            <StaffPreview id={equipped.staff} />
+          </Suspense>
+          <span>{STAFFS.find((s) => s.id === equipped.staff)?.name} — в руке в бою</span>
+        </div>
+      )}
       <div className="shop-grid">
         {items.map((item) => {
           const isOwned = owned.includes(item.id);
