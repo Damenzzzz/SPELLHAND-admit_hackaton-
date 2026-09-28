@@ -11,6 +11,7 @@ import { Campaign } from './ui/screens/Campaign';
 import { Leaderboard } from './ui/screens/Leaderboard';
 import { Menu } from './ui/screens/Menu';
 import { Online } from './ui/screens/Online';
+import { PersonalCalibration } from './ui/screens/PersonalCalibration';
 import { Results } from './ui/screens/Results';
 import { Shop } from './ui/screens/Shop';
 
@@ -44,6 +45,7 @@ export function App() {
       {screen === 'shop' && <Shop />}
       {screen === 'online' && <Online />}
       {screen === 'leaderboard' && <Leaderboard />}
+      {screen === 'personal' && <PersonalCalibration />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>

@@ -670,3 +670,17 @@ img.shop-icon { width: 110px; height: 110px; object-fit: contain; }
 .recorder button { margin: 4px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--muted); background: #222; color: #fff; cursor: pointer; }
 .recorder-step { color: var(--danger); font-weight: 700; }
 .recorder-text { margin-top: 6px; font-size: 20px; font-weight: 700; }
+.calib-progress {
+  --p: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 140px;
+  height: 140px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 62%, transparent 63%), conic-gradient(var(--ok) calc(var(--p) * 360deg), rgba(255, 255, 255, 0.15) 0);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%);
+  mask: radial-gradient(circle, transparent 60%, #000 61%);
+  pointer-events: none;
+}

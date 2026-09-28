@@ -11,7 +11,8 @@ export type Screen =
   | 'results'
   | 'shop'
   | 'online'
-  | 'leaderboard';
+  | 'leaderboard'
+  | 'personal';
 
 export type BattleSetup =
   | { kind: 'campaign'; level: number }

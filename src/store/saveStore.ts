@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GestureId } from '../gestures/types';
+import type { PersonalModel } from '../gestures/personal';
 import { randomNick } from '../net/nick';
 
 const KEY = 'spellhand.save.v1';
@@ -25,6 +26,8 @@ export interface SaveData {
   nickname: string;
   /** Итоги онлайн-боёв. */
   online: { wins: number; losses: number };
+  /** Персональная калибровка жестов (образцы формы руки). */
+  personal?: PersonalModel;
 }
 
 const DEFAULT_SAVE: SaveData = {

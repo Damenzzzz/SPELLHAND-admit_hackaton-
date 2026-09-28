@@ -5,10 +5,12 @@ import { preloadAssets } from './game/preload';
 import { unlockAudio } from './game/sfx';
 import { useSave } from './store/saveStore';
 import { useVision } from './store/visionStore';
+import { setPersonalModel } from './gestures/personal';
 import { setPalmSign } from './vision/features';
 import './styles.css';
 
 setPalmSign(useSave.getState().palmSign);
+setPersonalModel(useSave.getState().personal);
 
 // ассеты игры грузим после MediaPipe (~20 МБ wasm + модель), чтобы не делить с ним канал
 const offVision = useVision.subscribe((v) => {
