@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { isDev } from '../../dev';
 import { Battle, type BattleEvent } from '../../game/combat';
+import { ASSETS } from '../../game/data/assets';
 import { LEVEL_BY_ID } from '../../game/data/levels';
 import { SPELLS } from '../../game/data/spells';
 import { applyBattleResult, currentLoadout } from '../../game/economy';
@@ -15,7 +16,9 @@ import { SpellVfx, type VfxLayout } from '../../render/SpellVFX';
 import { useGame } from '../../store/gameStore';
 import { useGesture } from '../../store/gestureStore';
 import { useVision } from '../../store/visionStore';
+import { AssetImg } from '../AssetImg';
 import { HintCard } from '../HintCard';
+import { SpellIcon } from '../SpellIcon';
 
 const COUNTDOWN_MS = 3000;
 const END_DELAY_MS = 2200;
@@ -110,7 +113,7 @@ export function BattleScreen() {
           break;
         case 'reject':
           sfx.reject();
-          toast(`${TEMPLATES.find((t) => t.id === e.spell)?.icon ?? ''} ${e.reason}`, 'bad');
+          toast(`${TEMPLATES.find((t) => t.id === e.spell)?.name ?? ''}: ${e.reason}`, 'bad');
           break;
         case 'interrupt':
           toast(e.side === 'player' ? 'Заряд сбит ветром!' : 'Каст врага сбит!', e.side === 'player' ? 'bad' : 'good');
@@ -266,7 +269,7 @@ export function BattleScreen() {
                   key={tpl.id}
                   className={`spell-slot ${active === tpl.id ? 'spell-active' : ''} ${noMana || cd > 0 ? 'spell-off' : ''}`}
                 >
-                  <span className="spell-icon">{tpl.icon}</span>
+                  <SpellIcon id={tpl.id} className="spell-icon" />
                   {cd > 0 && <span className="spell-cd">{(cd / 1000).toFixed(1)}</span>}
                   {def && <span className="spell-mana">{Math.round(def.mana * (battle.loadout.staff.manaMul ?? 1))}</span>}
                 </div>
@@ -282,7 +285,7 @@ export function BattleScreen() {
         </CameraView>
       </div>
 
-      <div className="battle-enemy">
+      <div className="battle-enemy" style={{ backgroundImage: `url(${ASSETS.arena(level.arena)})` }}>
         <div className="hud hud-enemy">
           <div className="enemy-name">
             {level.boss ? '👑 ' : ''}
@@ -292,7 +295,7 @@ export function BattleScreen() {
           {t < enemy.slowedUntil && <div className="status">❄️ замедлен</div>}
         </div>
         <div ref={enemyRef} className={`enemy-portrait ${telegraph ? 'enemy-casting' : ''}`}>
-          <span>{level.enemyPortrait}</span>
+          <AssetImg src={ASSETS.enemy(level.id)} fallback={level.enemyPortrait} className="enemy-img" />
         </div>
         {telegraph && (
           <div className="telegraph">
@@ -300,7 +303,7 @@ export function BattleScreen() {
               className="telegraph-rune"
               style={{ ['--p' as string]: Math.min(1, (t - telegraph.start) / (telegraph.end - telegraph.start)) }}
             >
-              {SPELLS[telegraph.spell].icon}
+              <SpellIcon id={telegraph.spell} />
             </div>
             <span>
               {SPELLS[telegraph.spell].name}! {telegraph.spell === 'lightning' ? 'Щит держит только половину' : 'Подними щит — сожми кулак'}

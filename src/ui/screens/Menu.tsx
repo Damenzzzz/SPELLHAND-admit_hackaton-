@@ -1,5 +1,7 @@
+import { ASSETS } from '../../game/data/assets';
 import { useGame } from '../../store/gameStore';
 import { useSave } from '../../store/saveStore';
+import { AssetImg } from '../AssetImg';
 import { CoinBadge } from '../CoinBadge';
 import { DwellButton } from '../DwellButton';
 import { ScreenShell } from '../ScreenShell';
@@ -12,7 +14,7 @@ export function Menu() {
   return (
     <ScreenShell className="menu">
       <CoinBadge />
-      <h1 className="logo">SPELLHAND</h1>
+      <AssetImg src={ASSETS.logo} fallback="SPELLHAND" className="logo-img" alt="SPELLHAND" />
       <p className="menu-sub">Наведи указательный палец на кнопку и подержи</p>
       <nav className="menu-buttons">
         <DwellButton className="btn-primary" onSelect={() => go('campaign')}>

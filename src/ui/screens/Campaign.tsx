@@ -1,8 +1,10 @@
+import { ASSETS } from '../../game/data/assets';
 import { LEVELS } from '../../game/data/levels';
 import { SPELLS } from '../../game/data/spells';
 import type { SpellId } from '../../gestures/types';
 import { useGame } from '../../store/gameStore';
 import { useSave } from '../../store/saveStore';
+import { AssetImg } from '../AssetImg';
 import { CoinBadge } from '../CoinBadge';
 import { DwellButton } from '../DwellButton';
 import { ScreenShell } from '../ScreenShell';
@@ -29,7 +31,11 @@ export function Campaign() {
               onSelect={() => startBattle(l.id)}
             >
               <span className="level-num">{locked ? '🔒' : l.id}</span>
-              <span className="level-portrait">{locked ? '❔' : l.enemyPortrait}</span>
+              {locked ? (
+                <span className="level-portrait">❔</span>
+              ) : (
+                <AssetImg src={ASSETS.enemy(l.id)} fallback={l.enemyPortrait} className="level-portrait" />
+              )}
               <span className="level-name">{l.boss ? `👑 ${l.enemyName}` : l.enemyName}</span>
               <small>
                 {locked

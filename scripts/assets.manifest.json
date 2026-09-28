@@ -38,7 +38,7 @@
         720
       ],
       "out": "public/assets/images/arenas/forest.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena at a moonlit forest edge, ancient trees, fireflies, mossy stone circle in the center, no characters"
     },
     {
@@ -51,7 +51,7 @@
         720
       ],
       "out": "public/assets/images/arenas/bridge.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena on an old stone bridge over a misty river gorge at dusk, lanterns, no characters"
     },
     {
@@ -64,7 +64,7 @@
         720
       ],
       "out": "public/assets/images/arenas/cave.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena inside a frozen ice cave, blue crystal formations, icicles, frosty floor, no characters"
     },
     {
@@ -77,7 +77,7 @@
         720
       ],
       "out": "public/assets/images/arenas/swamp.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena in a foggy swamp, twisted roots, glowing green mushrooms, wooden platform in the center, no characters"
     },
     {
@@ -155,7 +155,7 @@
         720
       ],
       "out": "public/assets/images/arenas/throne.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "empty magical duel arena in the archmage's throne hall, huge golden astrolabe, starry vaulted ceiling, purple and gold banners, no characters"
     },
     {
@@ -454,7 +454,7 @@
         512
       ],
       "out": "public/assets/images/runes/shield_rune.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "a glowing circular magic rune shield seen from the front, intricate cyan runic script rings and a hexagram, top-down flat, perfectly centered circle"
     },
     {

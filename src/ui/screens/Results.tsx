@@ -2,6 +2,7 @@ import { LEVELS, LEVEL_BY_ID } from '../../game/data/levels';
 import { TEMPLATES, TEMPLATE_BY_ID } from '../../gestures/templates';
 import { useGame } from '../../store/gameStore';
 import { CoinBadge } from '../CoinBadge';
+import { SpellIcon } from '../SpellIcon';
 import { DwellButton } from '../DwellButton';
 import { ScreenShell } from '../ScreenShell';
 
@@ -61,7 +62,7 @@ export function Results() {
               return (
                 <div key={t.id} className="quality-row">
                   <span>
-                    {t.icon} {t.name} ×{s.count}
+                    <SpellIcon id={t.id} className="icon-inline" /> {t.name} ×{s.count}
                   </span>
                   <span className="bar quality-bar">
                     <span className="bar-fill" style={{ transform: `scaleX(${s.avgQuality})` }} />
@@ -81,7 +82,7 @@ export function Results() {
               {r.topErrors.map((e) => (
                 <li key={e.id}>
                   <span>
-                    {TEMPLATE_BY_ID[e.gesture].icon} {e.text}
+                    <SpellIcon id={e.gesture} className="icon-inline" /> {e.text}
                   </span>
                   <b>{times(e.count)}</b>
                 </li>

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { isDev } from '../../dev';
+import { ASSETS } from '../../game/data/assets';
+import { useAssets } from '../../game/preload';
 import { CameraView } from '../../render/CameraView';
 import { useGame } from '../../store/gameStore';
 import { useGesture } from '../../store/gestureStore';
@@ -7,6 +9,7 @@ import { updateSave } from '../../store/saveStore';
 import { getPalmSign, setPalmSign } from '../../vision/features';
 import { useVision } from '../../store/visionStore';
 import { startVision } from '../../vision/handTracker';
+import { AssetImg } from '../AssetImg';
 import { FpsCounter } from '../FpsCounter';
 
 const HAND_HOLD_MS = 1000;
@@ -23,6 +26,8 @@ interface Check {
   label: string;
   state: CheckState;
   hint?: string;
+  /** 0..1 — полоска прогресса под строкой. */
+  progress?: number;
 }
 
 interface Snapshot {
@@ -53,6 +58,7 @@ export function Calibration() {
 
     const id = setInterval(() => {
       const v = useVision.getState();
+      const assets = useAssets.getState();
       const now = performance.now();
       const running = v.status === 'running';
 
@@ -100,6 +106,13 @@ export function Calibration() {
           hint: v.status === 'error' ? (v.error ?? undefined) : 'Загружаем модель…',
         },
         {
+          id: 'assets',
+          label: `Ассеты игры ${Math.round((assets.loaded / assets.total) * 100)}%`,
+          state: assets.loaded >= assets.total ? 'ok' : 'pending',
+          hint: 'Загружаем арены, врагов и посохи…',
+          progress: assets.loaded / assets.total,
+        },
+        {
           id: 'hand',
           label: 'Открытая ладонь в кадре',
           state: !running ? 'pending' : handHeld ? 'ok' : 'pending',
@@ -141,13 +154,16 @@ export function Calibration() {
       </CameraView>
 
       <aside className="calibration-panel">
-        <h1 className="logo logo-sm">SPELLHAND</h1>
+        <AssetImg src={ASSETS.logo} fallback="SPELLHAND" className="logo-img logo-sm" alt="SPELLHAND" />
         <h2>Калибровка</h2>
         <ul className="checklist">
           {snap.checks.map((c) => (
             <li key={c.id} className={`check check-${c.state}`}>
               <span className="check-icon" aria-hidden />
               <span>{c.label}</span>
+              {c.progress !== undefined && c.state !== 'ok' && (
+                <span className="check-progress" style={{ transform: `scaleX(${c.progress})` }} />
+              )}
             </li>
           ))}
         </ul>

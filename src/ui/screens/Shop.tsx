@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { ASSETS } from '../../game/data/assets';
 import { SHIELDS, STAFFS, type ItemDef } from '../../game/data/items';
 import { buyItem, equipItem } from '../../game/economy';
 import { sfx } from '../../game/sfx';
 import { useGame } from '../../store/gameStore';
 import { useSave } from '../../store/saveStore';
+import { AssetImg } from '../AssetImg';
 import { CoinBadge } from '../CoinBadge';
 import { DwellButton } from '../DwellButton';
 import { ScreenShell } from '../ScreenShell';
@@ -53,9 +55,11 @@ export function Shop() {
               className={`shop-card ${isEquipped ? 'shop-equipped' : ''}`}
               onSelect={() => act(item)}
             >
-              <span className="shop-icon" style={{ color: item.color }}>
-                {item.icon}
-              </span>
+              <AssetImg
+                src={item.kind === 'staff' ? ASSETS.staffIcon(item.id) : ASSETS.rune(item.id)}
+                fallback={item.icon}
+                className="shop-icon"
+              />
               <span className="shop-name">{item.name}</span>
               <small>{item.effect}</small>
               <span className="shop-price">

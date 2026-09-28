@@ -10,6 +10,7 @@ import { useGame } from '../../store/gameStore';
 import { useGesture } from '../../store/gestureStore';
 import { updateSave, useSave } from '../../store/saveStore';
 import { DwellButton } from '../DwellButton';
+import { SpellIcon } from '../SpellIcon';
 import { HintCard } from '../HintCard';
 import { ScreenShell } from '../ScreenShell';
 
@@ -31,7 +32,7 @@ function GestureList() {
       <div className="gesture-grid">
         {TEMPLATES.map((t) => (
           <DwellButton key={t.id} className="gesture-card" onSelect={() => openAcademy(t.id)}>
-            <span className="gesture-icon">{t.icon}</span>
+            <SpellIcon id={t.id} className="gesture-icon" />
             {t.name}
             <small>{learned.includes(t.id) ? '✓ изучен' : t.hands === 2 ? 'две руки' : 'одна рука'}</small>
           </DwellButton>
@@ -111,8 +112,8 @@ function Training({ gesture }: { gesture: GestureId }) {
         {toast && <div className="toast">{toast}</div>}
       </CameraView>
       <aside className="side-panel academy-panel">
-        <h2 className="screen-title">
-          {tpl.icon} {tpl.name}
+        <h2 className="screen-title title-with-icon">
+          <SpellIcon id={tpl.id} /> {tpl.name}
         </h2>
         <div className="academy-ghost">
           <GhostHand gesture={gesture} size={170} />
