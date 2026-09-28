@@ -3,6 +3,7 @@ import { computeFeatures, type FingerId, type HandFeatures } from '../vision/fea
 import { LandmarkFilter } from '../vision/oneEuro';
 import { GESTURE_CONFIG as C } from './config';
 import { HandIdentity } from './handIdentity';
+import { applyPersonal } from './personal';
 import { MotionTrack } from './motion';
 import { TEMPLATES, TEMPLATE_BY_ID } from './templates';
 import type { ConstraintResult, GestureId, GestureTemplate, TemplateScore } from './types';
@@ -196,6 +197,7 @@ export class GestureEngine {
 
     const scores = {} as Record<GestureId, TemplateScore>;
     for (const tpl of TEMPLATES) scores[tpl.id] = evalTemplate(tpl, hands);
+    applyPersonal(scores, hands);
 
     // лучший шаблон; двуручные в приоритете, если распознаны (две ладони = ветер/лечение, а не 2 огненных шара)
     const all = Object.values(scores).sort((a, b) => b.score - a.score);
