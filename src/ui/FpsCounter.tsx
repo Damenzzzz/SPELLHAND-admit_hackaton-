@@ -4,12 +4,19 @@ export function FpsCounter() {
   const fps = useVision((s) => Math.round(s.fps));
   const hands = useVision((s) => s.hands.length);
   const delegate = useVision((s) => s.delegate);
+  const mode = useVision((s) => s.detectorMode);
   const level = fps >= 20 ? 'ok' : fps >= 12 ? 'warn' : 'bad';
 
   return (
     <div className={`fps-counter fps-${level}`}>
       <b>{fps}</b> FPS · рук: {hands}
-      {delegate && <span className="fps-delegate"> · {delegate}</span>}
+      {delegate && (
+        <span className="fps-delegate">
+          {' '}
+          · {delegate}
+          {mode === 'worker' ? ' · worker' : ''}
+        </span>
+      )}
     </div>
   );
 }

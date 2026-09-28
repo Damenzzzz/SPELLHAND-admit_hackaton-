@@ -15,6 +15,8 @@ interface VisionState {
   status: VisionStatus;
   error: string | null;
   delegate: 'GPU' | 'CPU' | null;
+  /** Где идёт детекция: в Web Worker или в главном потоке. */
+  detectorMode: 'worker' | 'main' | null;
   /** Кадров детекции в секунду (сглаженное). */
   fps: number;
   /** Средняя яркость кадра 0..255. */
@@ -29,6 +31,7 @@ export const useVision = create<VisionState>(() => ({
   status: 'idle',
   error: null,
   delegate: null,
+  detectorMode: null,
   fps: 0,
   brightness: 0,
   hands: [],

@@ -1,8 +1,8 @@
-import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import { gestureEngine } from '../gestures/matcher';
 import { useGesture } from '../store/gestureStore';
-import { useVision, type Handedness, type TrackedHand } from '../store/visionStore';
+import { useVision, type TrackedHand } from '../store/visionStore';
 import { CameraError, startCamera } from './camera';
+import { createMainDetector, createWorkerDetector, shouldUseWorker, type Detector } from './detector';
 import { devHands } from './devFeed';
 import { recordFrame } from './recorder';
 
@@ -17,26 +17,18 @@ const BRIGHTNESS_EVERY_MS = 500;
 export const video: HTMLVideoElement = document.createElement('video');
 video.className = 'camera-video';
 
-let landmarker: HandLandmarker | null = null;
 let started = false;
 
-async function createLandmarker(): Promise<{ lm: HandLandmarker; delegate: 'GPU' | 'CPU' }> {
-  const fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
-  const make = (delegate: 'GPU' | 'CPU') =>
-    HandLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: MODEL_PATH, delegate },
-      runningMode: 'VIDEO',
-      numHands: 2,
-      minHandDetectionConfidence: 0.6,
-      minHandPresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
-  try {
-    return { lm: await make('GPU'), delegate: 'GPU' };
-  } catch (err) {
-    console.warn('[vision] GPU delegate failed, falling back to CPU', err);
-    return { lm: await make('CPU'), delegate: 'CPU' };
+/** Воркер, а при сбое — главный поток (dev, Safari/iOS, старые браузеры). */
+async function createDetector(): Promise<Detector> {
+  if (shouldUseWorker()) {
+    try {
+      return await createWorkerDetector(WASM_PATH, MODEL_PATH);
+    } catch (err) {
+      console.warn('[vision] worker detector failed, using main thread', err);
+    }
   }
+  return createMainDetector(WASM_PATH, MODEL_PATH);
 }
 
 // --- яркость кадра: маленький канвас, раз в полсекунды ---
@@ -56,8 +48,9 @@ function measureBrightness(): number {
   return sum / (data.length / 4);
 }
 
-function runLoop(lm: HandLandmarker) {
+function runLoop(detector: Detector) {
   let lastVideoTime = -1;
+  let busy = false;
   let frames = 0;
   let windowStart = performance.now();
   let lastBrightness = 0;
@@ -67,18 +60,24 @@ function runLoop(lm: HandLandmarker) {
     else requestAnimationFrame(tick);
   };
 
+  // один кадр «в полёте»: пока воркер считает, новые кадры пропускаются
   const tick = () => {
     const now = performance.now();
-    if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+    if (!busy && video.readyState >= 2 && video.currentTime !== lastVideoTime) {
       lastVideoTime = video.currentTime;
-      const result = lm.detectForVideo(video, now);
-      frames++;
+      busy = true;
+      detector
+        .detect(video, now)
+        .then((detected) => process(detected, now))
+        .catch((err) => console.warn('[vision] detect failed', err))
+        .finally(() => (busy = false));
+    }
+    scheduleNext();
+  };
 
-      const detected: TrackedHand[] = result.landmarks.map((landmarks, i) => ({
-        landmarks,
-        handedness: (result.handedness[i]?.[0]?.categoryName ?? 'Right') as Handedness,
-        score: result.handedness[i]?.[0]?.score ?? 0,
-      }));
+  const process = (detected: TrackedHand[], now: number) => {
+    {
+      frames++;
       recordFrame(now, detected, useVision.getState().brightness);
       const hands = devHands() ?? detected;
 
@@ -101,7 +100,6 @@ function runLoop(lm: HandLandmarker) {
       const snap = gestureEngine.update(hands, aspect, useVision.getState().brightness, now);
       useGesture.setState({ snap });
     }
-    scheduleNext();
   };
 
   scheduleNext();
@@ -114,9 +112,9 @@ export async function startVision(): Promise<void> {
   const set = useVision.setState;
   set({ status: 'camera', error: null });
 
-  const modelPromise = createLandmarker();
+  const detectorPromise = createDetector();
   // не даём unhandled rejection, пока ждём камеру
-  modelPromise.catch(() => {});
+  detectorPromise.catch(() => {});
 
   try {
     await startCamera(video);
@@ -124,10 +122,9 @@ export async function startVision(): Promise<void> {
       status: 'model',
       videoSize: { width: video.videoWidth, height: video.videoHeight },
     });
-    const { lm, delegate } = await modelPromise;
-    landmarker = lm;
-    set({ status: 'running', delegate });
-    runLoop(landmarker);
+    const detector = await detectorPromise;
+    set({ status: 'running', delegate: detector.delegate, detectorMode: detector.mode });
+    runLoop(detector);
   } catch (err) {
     started = false;
     const message =
