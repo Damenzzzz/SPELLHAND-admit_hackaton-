@@ -10,7 +10,7 @@ import { BattleStats } from '../../game/stats';
 import { gestureEngine } from '../../gestures/matcher';
 import { TEMPLATES } from '../../gestures/templates';
 import type { SpellId } from '../../gestures/types';
-import { currentLink, setCurrentLink, STATE_EVERY_MS } from '../../net/pvp';
+import { currentLink, setCurrentLink, STATE_EVERY_MS } from '../../net/session';
 import { CameraView } from '../../render/CameraView';
 import { coverBox } from '../../render/HandOverlay';
 import { SpellVfx, type VfxLayout } from '../../render/SpellVFX';

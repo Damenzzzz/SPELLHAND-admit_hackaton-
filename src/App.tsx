@@ -7,6 +7,7 @@ import { BattleScreen } from './ui/screens/Battle';
 import { Calibration } from './ui/screens/Calibration';
 import { Campaign } from './ui/screens/Campaign';
 import { Menu } from './ui/screens/Menu';
+import { Online } from './ui/screens/Online';
 import { Results } from './ui/screens/Results';
 import { Shop } from './ui/screens/Shop';
 
@@ -26,6 +27,7 @@ export function App() {
       {screen === 'results' && <Results />}
       {screen === 'campaign' && <Campaign />}
       {screen === 'shop' && <Shop />}
+      {screen === 'online' && <Online />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>

@@ -27,7 +27,6 @@ export type StateMsg = {
 
 const START_DELAY_MS = 3500;
 const CONNECT_TIMEOUT_MS = 12000;
-export const STATE_EVERY_MS = 250;
 
 /**
  * Канал матча: события ready, countdown {startAt}, cast, state (каждые 250 мс), end.
@@ -100,8 +99,3 @@ export class PvpLink {
     setTimeout(() => void this.room.leave(), 500);
   }
 }
-
-/** Текущий матч — передаётся с экрана «Онлайн» на экран боя. */
-let current: PvpLink | null = null;
-export const setCurrentLink = (l: PvpLink | null) => (current = l);
-export const currentLink = () => current;

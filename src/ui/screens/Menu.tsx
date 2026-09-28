@@ -23,6 +23,7 @@ export function Menu() {
         <DwellButton onSelect={() => openAcademy(null)}>
           📖 Академия <small>изучено {learned}/6</small>
         </DwellButton>
+        <DwellButton onSelect={() => go('online')}>🌐 Онлайн-дуэль</DwellButton>
         <DwellButton onSelect={() => go('shop')}>🛒 Магазин</DwellButton>
         <DwellButton onSelect={() => go('calibration')}>🎯 Калибровка</DwellButton>
       </nav>

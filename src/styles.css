@@ -618,3 +618,25 @@ img.shop-icon { width: 110px; height: 110px; object-fit: contain; }
 }
 .enemy-casting .enemy-img { filter: drop-shadow(0 0 30px rgba(255, 127, 208, 0.9)); animation: none; }
 .enemy-ghost { opacity: 0.75; filter: hue-rotate(160deg) saturate(0.6) drop-shadow(0 0 20px #8fe3ff) !important; }
+
+/* --- онлайн --- */
+.online-card { width: min(520px, 100%); display: grid; gap: 16px; text-align: center; }
+.online-nick { display: grid; gap: 4px; }
+.online-nick b { font-size: 26px; color: var(--gold); }
+.online-actions { display: grid; gap: 12px; }
+.online-status { display: grid; gap: 8px; justify-items: center; }
+.online-status p { margin: 0; }
+.found { font-size: 20px; font-weight: 700; color: var(--ok); }
+.search-ring {
+  --p: 0;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 32px;
+  font-weight: 800;
+  background:
+    radial-gradient(circle, var(--bg-2) 58%, transparent 60%),
+    conic-gradient(var(--gold) calc(var(--p) * 360deg), rgba(255, 255, 255, 0.1) 0);
+}
