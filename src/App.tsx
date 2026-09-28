@@ -6,6 +6,7 @@ import { Academy } from './ui/screens/Academy';
 import { BattleScreen } from './ui/screens/Battle';
 import { Calibration } from './ui/screens/Calibration';
 import { Menu } from './ui/screens/Menu';
+import { Results } from './ui/screens/Results';
 
 function DevTools() {
   useDevKeys();
@@ -20,6 +21,7 @@ export function App() {
       {screen === 'menu' && <Menu />}
       {screen === 'academy' && <Academy />}
       {screen === 'battle' && <BattleScreen />}
+      {screen === 'results' && <Results />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>
