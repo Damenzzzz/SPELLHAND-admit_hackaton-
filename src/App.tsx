@@ -2,6 +2,7 @@ import { isDev } from './dev';
 import { useGame } from './store/gameStore';
 import { DevPanel, useDevKeys } from './ui/DevPanel';
 import { SoundBadge } from './ui/SoundBadge';
+import { Academy } from './ui/screens/Academy';
 import { Calibration } from './ui/screens/Calibration';
 import { Menu } from './ui/screens/Menu';
 
@@ -16,6 +17,7 @@ export function App() {
     <main className="app">
       {screen === 'calibration' && <Calibration />}
       {screen === 'menu' && <Menu />}
+      {screen === 'academy' && <Academy />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>

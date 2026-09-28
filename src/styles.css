@@ -283,3 +283,79 @@ body {
 
 .menu-sub { margin: 0; color: var(--muted); }
 .menu-buttons { display: grid; gap: 14px; width: min(420px, 100%); }
+
+/* --- общие экраны --- */
+.screen-title { margin: 0; font-size: 26px; color: var(--gold); }
+
+.split-screen { height: 100%; display: grid; grid-template-columns: 1fr minmax(320px, 400px); }
+.split-camera { height: 100%; }
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 20px;
+  overflow-y: auto;
+  background: rgba(11, 16, 38, 0.94);
+  border-left: 1px solid rgba(95, 168, 255, 0.2);
+}
+.panel-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; }
+.panel-buttons .dwell-btn { font-size: 16px; min-height: 56px; }
+
+/* --- подсказки режима «ошибка» --- */
+.hint-card {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: rgba(11, 16, 38, 0.88);
+  border: 2px solid var(--danger);
+  box-shadow: 0 0 24px rgba(255, 77, 94, 0.35);
+  animation: pop 0.2s ease-out;
+  z-index: 5;
+}
+.hint-card-context { border-color: var(--gold); box-shadow: 0 0 24px rgba(242, 195, 91, 0.3); }
+.hint-card-motion { border-color: #ff9a3d; }
+.hint-title { font-size: 13px; color: var(--muted); }
+.hint-line { font-size: 19px; font-weight: 600; }
+.hint-compact .hint-line { font-size: 17px; }
+.ghost-hand { flex: none; }
+
+@keyframes pop { from { transform: translateX(-50%) scale(0.9); opacity: 0; } }
+
+.toast {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: rgba(93, 255, 160, 0.18);
+  border: 1px solid var(--ok);
+  font-weight: 700;
+  z-index: 6;
+}
+
+/* --- академия --- */
+.gesture-grid { display: grid; grid-template-columns: repeat(3, minmax(150px, 200px)); gap: 12px; }
+.gesture-card { text-align: center; }
+.gesture-icon { display: block; font-size: 34px; }
+.academy-ghost { display: flex; gap: 12px; align-items: center; }
+.pose-text { margin: 0 0 6px; }
+.motion-text { margin: 0; color: var(--arcane); }
+.check-pending-static .check-icon { border-color: var(--muted); }
+.progress-dots { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--gold); }
+.dot-on { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+
+@media (max-width: 760px), (orientation: portrait) {
+  .split-screen { grid-template-columns: 1fr; grid-template-rows: 45% 55%; }
+  .side-panel { border-left: 0; border-top: 1px solid rgba(95, 168, 255, 0.2); padding: 14px; }
+  .gesture-grid { grid-template-columns: repeat(2, 1fr); }
+  .hint-line { font-size: 15px; }
+}
