@@ -1,8 +1,9 @@
 import { isDev } from './dev';
 import { useGame } from './store/gameStore';
 import { DevPanel, useDevKeys } from './ui/DevPanel';
+import { SoundBadge } from './ui/SoundBadge';
 import { Calibration } from './ui/screens/Calibration';
-import { Sandbox } from './ui/screens/Sandbox';
+import { Menu } from './ui/screens/Menu';
 
 function DevTools() {
   useDevKeys();
@@ -14,7 +15,8 @@ export function App() {
   return (
     <main className="app">
       {screen === 'calibration' && <Calibration />}
-      {screen === 'menu' && <Sandbox />}
+      {screen === 'menu' && <Menu />}
+      <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>
   );

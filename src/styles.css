@@ -193,3 +193,93 @@ body {
 .dev-constraints { margin-top: 6px; color: var(--muted); }
 .dev-bad { color: var(--danger); }
 .dev-keys { margin-top: 6px; color: var(--arcane); }
+
+/* --- dwell-курсор и кнопки --- */
+.dwell-cursor {
+  position: fixed;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--gold);
+  box-shadow: 0 0 16px var(--gold), inset 0 0 8px var(--gold);
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.dwell-btn {
+  --dwell: 0;
+  position: relative;
+  overflow: hidden;
+  min-height: 64px;
+  padding: 14px 22px;
+  border: 2px solid rgba(95, 168, 255, 0.35);
+  border-radius: 14px;
+  background: rgba(20, 27, 61, 0.85);
+  color: var(--text);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: left;
+  cursor: default;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.dwell-btn small { display: block; font-size: 13px; font-weight: 400; color: var(--muted); }
+.dwell-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(242, 195, 91, 0.35), rgba(242, 195, 91, 0.15));
+  transform: scaleX(var(--dwell));
+  transform-origin: left;
+}
+.dwell-content { position: relative; }
+.dwell-hover { border-color: var(--gold); transform: scale(1.03); }
+.dwell-disabled { opacity: 0.4; }
+.btn-primary { border-color: rgba(242, 195, 91, 0.6); }
+
+/* --- оболочка меню --- */
+.shell { position: relative; height: 100%; }
+.shell-camera { position: absolute; inset: 0; }
+.shell-camera .camera-video { opacity: 0.35; filter: saturate(0.5); }
+.shell-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background: radial-gradient(ellipse at center, rgba(11, 16, 38, 0.55), rgba(11, 16, 38, 0.85));
+}
+
+.coin-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(242, 195, 91, 0.15);
+  border: 1px solid rgba(242, 195, 91, 0.5);
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.sound-badge {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(11, 16, 38, 0.85);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.menu-sub { margin: 0; color: var(--muted); }
+.menu-buttons { display: grid; gap: 14px; width: min(420px, 100%); }

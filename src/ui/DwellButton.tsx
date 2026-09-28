@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { isDev } from '../dev';
+import { sfx } from '../game/sfx';
 import { registerDwell } from './dwell';
 
 interface Props {
@@ -18,7 +19,12 @@ export function DwellButton({ onSelect, children, className, disabled }: Props) 
   useEffect(() => {
     if (disabled) return;
     const el = ref.current!;
-    return registerDwell(el, { onSelect: () => cb.current() });
+    return registerDwell(el, {
+      onSelect: () => {
+        sfx.select();
+        cb.current();
+      },
+    });
   }, [disabled]);
 
   return (
