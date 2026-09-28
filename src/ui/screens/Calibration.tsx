@@ -81,7 +81,7 @@ export function Calibration() {
         {
           id: 'fps',
           label: `Скорость ≥ ${FPS_MIN} FPS`,
-          state: !fpsSettled ? 'pending' : v.fps >= FPS_MIN ? 'ok' : 'warn',
+          state: !fpsSettled ? 'pending' : Math.round(v.fps) >= FPS_MIN ? 'ok' : 'warn',
           hint: `Сейчас ${Math.round(v.fps)} FPS — закрой лишние вкладки и приложения`,
         },
         {
