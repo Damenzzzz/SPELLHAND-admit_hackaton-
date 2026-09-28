@@ -46,6 +46,12 @@ export class BattleStats {
   private shield: { upAt: number; counted: boolean } | null = null;
   private errors = new Map<string, ErrorStat>();
   private failures = 0;
+  private runeCasts = 0;
+
+  /** Удачная руна — удачная попытка (в точность), но не жест из шаблонов. */
+  runeSuccess() {
+    this.runeCasts++;
+  }
 
   /** Успешный каст/поднятие щита/начало лечения. */
   success(g: GestureId, quality: number) {
@@ -89,6 +95,10 @@ export class BattleStats {
     } else if (e.type === 'overcharge') {
       this.failures++;
       this.addError('fireball_overcharge', 'Перезаряд — шар взорвался в руке', 'fireball');
+    } else if (e.type === 'runeFail') {
+      this.failures++;
+      // руны не жесты из шаблонов — в статистике относим к молнии «рисования» по умолчанию
+      this.addError('rune_fail', 'Руна не распознана', 'lightning');
     }
   }
 
@@ -103,7 +113,7 @@ export class BattleStats {
     'accuracy' | 'casts' | 'attempts' | 'perSpell' | 'topErrors' | 'advice' | 'errorCounts'
   > {
     const perSpell: Partial<Record<GestureId, SpellStat>> = {};
-    let casts = 0;
+    let casts = this.runeCasts;
     for (const [g, arr] of this.quality) {
       casts += arr.length;
       perSpell[g] = { count: arr.length, avgQuality: arr.reduce((a, b) => a + b, 0) / arr.length };

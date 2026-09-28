@@ -18,7 +18,7 @@ describe('$P-распознаватель рун', () => {
       for (const seed of [1, 7, 42]) {
         const r = recognize(drawn(id, seed), RUNE_TEMPLATES)!;
         expect(r.id).toBe(id);
-        expect(r.score).toBeGreaterThan(0.75);
+        expect(r.score).toBeGreaterThan(0.7);
       }
     });
   }

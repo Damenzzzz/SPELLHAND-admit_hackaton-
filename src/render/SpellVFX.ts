@@ -2,6 +2,7 @@ import type { SpellId } from '../gestures/types';
 import type { Battle, BattleEvent, Projectile, Side } from '../game/combat';
 import { ASSETS } from '../game/data/assets';
 import { SHIELDS } from '../game/data/items';
+import { RUNES } from '../gestures/runes/runes';
 import { GESTURE_COLOR } from './colors';
 
 export interface Point {
@@ -160,6 +161,14 @@ export class SpellVfx {
             kind: 'dot',
           });
         }
+        break;
+      case 'runeCast':
+        if (e.projectile) this.origins.set(e.projectile.id, { ...layout.playerHand });
+        this.burst(layout.playerHand, RUNES[e.rune].color, 50, 300);
+        this.floatText({ x: layout.playerHand.x, y: layout.playerHand.y - 60 }, RUNES[e.rune].name.toUpperCase(), RUNES[e.rune].color);
+        break;
+      case 'frozen':
+        this.burst(e.side === 'enemy' ? layout.enemy : layout.playerCenter, '#bfefff', 36, 180, 'shard', 7);
         break;
       case 'parry': {
         // отражённый снаряд вылетает из руки игрока
@@ -385,7 +394,13 @@ export class SpellVfx {
         }
         continue;
       }
-      this.drawProjectile(p.spell, pos, p.to === 'enemy' ? 1 : -1);
+      if (p.big) {
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.scale(2.2, 2.2);
+        this.drawProjectile(p.spell, { x: 0, y: 0 }, p.to === 'enemy' ? 1 : -1);
+        ctx.restore();
+      } else this.drawProjectile(p.spell, pos, p.to === 'enemy' ? 1 : -1);
     }
     this.bolts = this.bolts.filter((b) => b.until > now);
     this.bolts.forEach((b) => this.drawBolt(b));

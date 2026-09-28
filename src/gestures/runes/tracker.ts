@@ -57,9 +57,19 @@ export class RuneTracker {
     return pinch < limit && h.extension.middle >= C.middleMin;
   }
 
-  /** Возвращает состояние пера и событие, если росчерк завершён. */
-  update(hands: HandFeatures[], now: number): { penDown: boolean; trail: { x: number; y: number }[]; event: RuneEvent | null } {
-    const pen = hands.find((h) => this.isPen(h));
+  /**
+   * Возвращает состояние пера и событие, если росчерк завершён.
+   * unfiltered — сырые landmarks MediaPipe тех же рук: для формы руны точность важнее
+   * сглаживания (One Euro скругляет углы треугольника), дрожь уберёт передискретизация.
+   */
+  update(
+    hands: HandFeatures[],
+    now: number,
+    unfiltered?: { x: number; y: number }[][],
+    aspect = 1,
+  ): { penDown: boolean; trail: { x: number; y: number }[]; event: RuneEvent | null } {
+    const penIdx = hands.findIndex((h) => this.isPen(h));
+    const pen = penIdx >= 0 ? hands[penIdx] : undefined;
 
     if (!this.down) {
       this.enter = pen ? this.enter + 1 : 0;
@@ -75,8 +85,11 @@ export class RuneTracker {
       if (pen) {
         this.lostAt = 0;
         this.palm = pen.palmSize;
-        const tip = { x: (pen.pts[4].x + pen.pts[8].x) / 2, y: (pen.pts[4].y + pen.pts[8].y) / 2 };
-        this.points.push({ ...tip, t: now, rx: (pen.raw[4].x + pen.raw[8].x) / 2, ry: (pen.raw[4].y + pen.raw[8].y) / 2 });
+        const src = unfiltered?.[penIdx] ?? pen.raw;
+        const rx = (src[4].x + src[8].x) / 2;
+        const ry = (src[4].y + src[8].y) / 2;
+        const tip = unfiltered ? { x: rx * aspect, y: ry } : { x: (pen.pts[4].x + pen.pts[8].x) / 2, y: (pen.pts[4].y + pen.pts[8].y) / 2 };
+        this.points.push({ ...tip, t: now, rx, ry });
       } else {
         this.lostAt ||= now;
         if (now - this.lostAt >= C.lostMs || !hands.length) {

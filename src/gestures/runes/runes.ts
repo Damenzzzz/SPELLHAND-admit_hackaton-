@@ -48,8 +48,18 @@ const SHAPES: Record<RuneId, Pt[][]> = {
   mend: [circle(2, 0.8), circle(2, 0.8).map((p) => ({ x: -p.x, y: p.y }))],
 };
 
+/**
+ * В воздухе фигуру почти никогда не замыкают идеально, а обрезка дрожания пера съедает
+ * ещё по кусочку с концов — поэтому к каждому эталону добавлен «недорисованный» вариант.
+ */
+const OPEN_FRACTION = 0.88;
+
 export const RUNE_TEMPLATES: RuneTemplate<RuneId>[] = (Object.entries(SHAPES) as [RuneId, Pt[][]][]).flatMap(
-  ([id, variants]) => variants.map((v) => ({ id, points: prepare(v) })),
+  ([id, variants]) =>
+    variants.flatMap((v) => [
+      { id, points: prepare(v) },
+      { id, points: prepare(v.slice(0, Math.round(v.length * OPEN_FRACTION))) },
+    ]),
 );
 
 /** Точки эталона для отрисовки подсказки (первый вариант). */

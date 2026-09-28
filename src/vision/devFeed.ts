@@ -15,6 +15,12 @@ if (isDev) {
     __spellhand: {
       OPEN,
       FIST,
+      /** Синтетические точки руки (для составных поз вроде «пера» руны). */
+      synth: (o: Partial<SynthOptions> & { ext: SynthOptions['ext'] }) => synthHand({ aspect: 16 / 9, ...o }),
+      /** Подать готовые landmarks: [{ landmarks, handedness?, score? }]. */
+      raw(list: { landmarks: { x: number; y: number; z: number }[]; handedness?: 'Left' | 'Right' }[] | null) {
+        synthetic = list?.map((h) => ({ landmarks: h.landmarks, handedness: h.handedness ?? 'Left', score: 0.95 })) ?? null;
+      },
       hands(list: (Partial<SynthOptions> & { ext: SynthOptions['ext'] })[] | null) {
         synthetic =
           list?.map((o) => ({

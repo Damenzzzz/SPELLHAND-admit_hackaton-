@@ -39,6 +39,7 @@ function GestureList() {
         ))}
       </div>
       <nav className="results-buttons">
+        <DwellButton onSelect={() => go('runes')}>✍️ Руны</DwellButton>
         <DwellButton onSelect={() => go('personal')}>🎯 Под мою руку</DwellButton>
         <DwellButton onSelect={() => go('menu')}>← В меню</DwellButton>
       </nav>

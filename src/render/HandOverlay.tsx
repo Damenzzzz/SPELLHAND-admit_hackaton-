@@ -115,6 +115,27 @@ export function HandOverlay() {
           ctx.fill();
         });
       });
+
+      // след пера руны — светящаяся линия золотом
+      const trail = snap?.rune.penDown ? snap.rune.trail : [];
+      if (trail.length > 1) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.shadowColor = '#f2c35b';
+        ctx.shadowBlur = r * 6;
+        for (const [width, color] of [
+          [r * 3.2, 'rgba(242,195,91,0.35)'],
+          [r * 1.3, '#fff3c4'],
+        ] as const) {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width;
+          ctx.beginPath();
+          trail.forEach((p, i) => (i ? ctx.lineTo(ox + p.x * dw, oy + p.y * dh) : ctx.moveTo(ox + p.x * dw, oy + p.y * dh)));
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
     };
 
     raf = requestAnimationFrame(draw);

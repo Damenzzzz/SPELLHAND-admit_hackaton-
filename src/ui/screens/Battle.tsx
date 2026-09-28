@@ -4,6 +4,7 @@ import { Battle, type BattleEvent } from '../../game/combat';
 import { ASSETS } from '../../game/data/assets';
 import { dailyChallenge, dailyScore } from '../../game/data/daily';
 import { gradeOf } from '../../game/data/grades';
+import { RUNES } from '../../gestures/runes/runes';
 import { GHOST_LEVEL, LEVEL_BY_ID, onlineLevel } from '../../game/data/levels';
 import { COMBAT, SPELLS } from '../../game/data/spells';
 import { applyBattleResult, applyOnlineResult, currentLoadout } from '../../game/economy';
@@ -118,6 +119,8 @@ export function BattleScreen() {
         lastWeakest = e.weakest && e.weakest.score < 0.9 ? e.weakest.hint : null;
         const ok = battle.playerCast(e.gesture, e.quality, e.charge, e.shard);
         if (ok && e.shard === 1) stats.success(e.gesture, e.quality);
+      } else if (e.type === 'rune') {
+        if (battle.playerRune(e.rune, e.score)) stats.runeSuccess();
       } else {
         stats.onGesture(e);
         if (e.type === 'overcharge') {
@@ -161,6 +164,14 @@ export function BattleScreen() {
           break;
         case 'telegraph':
           sfx.enemyTelegraph();
+          break;
+        case 'runeCast':
+          sfx.cast(e.rune === 'chain' ? 'lightning' : e.rune === 'prison' ? 'ice' : e.rune === 'meteor' ? 'fireball' : 'heal');
+          sfx.victory();
+          toast(`✍️ ${RUNES[e.rune].glyph} ${RUNES[e.rune].name}! ${RUNES[e.rune].effect}`, 'good');
+          break;
+        case 'frozen':
+          if (e.side === 'enemy') toast(`🧊 ${level.enemyName} заморожен`, 'good');
           break;
         case 'parry':
           sfx.block();
@@ -435,7 +446,10 @@ export function BattleScreen() {
           <Bar value={enemy.hp} max={enemy.maxHp} className="bar-hp bar-enemy" />
           {t < enemy.slowedUntil && <div className="status">❄️ замедлен</div>}
         </div>
-        <div ref={enemyRef} className={`enemy-portrait ${telegraph ? 'enemy-casting' : ''}`}>
+        <div
+          ref={enemyRef}
+          className={`enemy-portrait ${telegraph ? 'enemy-casting' : ''} ${t < enemy.frozenUntil ? 'enemy-frozen' : ''}`}
+        >
           <AssetImg
             src={ASSETS.enemy(level.portraitOf ?? level.id)}
             fallback={level.enemyPortrait}

@@ -219,7 +219,12 @@ export class GestureEngine {
     this.lastScores = scores;
 
     // руна: пока перо опущено, обычные жесты не взводятся (росчерк ≠ огненный шар)
-    const rune = this.runes.update(hands, now);
+    const rune = this.runes.update(
+      hands,
+      now,
+      tracked.map((h) => h.landmarks),
+      aspect,
+    );
     if (rune.event) this.onRuneEvent(rune.event, now);
     if (rune.penDown) {
       this.candidate = null;

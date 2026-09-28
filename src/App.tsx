@@ -15,6 +15,7 @@ import { Menu } from './ui/screens/Menu';
 import { Online } from './ui/screens/Online';
 import { PersonalCalibration } from './ui/screens/PersonalCalibration';
 import { Results } from './ui/screens/Results';
+import { RuneAcademy } from './ui/screens/RuneAcademy';
 import { Rush } from './ui/screens/Rush';
 import { Shop } from './ui/screens/Shop';
 
@@ -52,6 +53,7 @@ export function App() {
       {screen === 'coach' && <Coach />}
       {screen === 'rush' && <Rush />}
       {screen === 'daily' && <Daily />}
+      {screen === 'runes' && <RuneAcademy />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>

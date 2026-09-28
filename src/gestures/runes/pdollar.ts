@@ -40,14 +40,23 @@ export function resample(input: Pt[], n = N): Pt[] {
   return out.slice(0, n);
 }
 
-/** Равномерное масштабирование в единичный квадрат (пропорции сохраняются) и центрирование. */
+/**
+ * Масштабирование в единичный квадрат и центрирование. Все руны — двумерные фигуры,
+ * а в воздухе их рисуют с любыми пропорциями (широкий треугольник, вытянутый круг),
+ * поэтому оси масштабируются раздельно, как в $1. Почти одномерный росчерк (линия)
+ * масштабируется равномерно, чтобы не раздуть дрожание в фигуру.
+ */
 export function normalize(pts: Pt[]): Pt[] {
   const xs = pts.map((p) => p.x);
   const ys = pts.map((p) => p.y);
-  const size = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) || 1;
+  const w = Math.max(...xs) - Math.min(...xs) || 1e-6;
+  const h = Math.max(...ys) - Math.min(...ys) || 1e-6;
+  const flat = Math.min(w, h) / Math.max(w, h) < 0.25;
+  const sx = flat ? Math.max(w, h) : w;
+  const sy = flat ? Math.max(w, h) : h;
   const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
   const cy = pts.reduce((a, p) => a + p.y, 0) / pts.length;
-  return pts.map((p) => ({ x: (p.x - cx) / size, y: (p.y - cy) / size }));
+  return pts.map((p) => ({ x: (p.x - cx) / sx, y: (p.y - cy) / sy }));
 }
 
 export const prepare = (pts: Pt[]) => normalize(resample(pts));

@@ -15,7 +15,8 @@ export type Screen =
   | 'personal'
   | 'coach'
   | 'rush'
-  | 'daily';
+  | 'daily'
+  | 'runes';
 
 export type BattleSetup =
   | { kind: 'campaign'; level: number }
