@@ -21,14 +21,7 @@ body {
   overflow: hidden;
 }
 
-.app {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
+.app { height: 100%; }
 
 .logo {
   margin: 0;
@@ -38,7 +31,8 @@ body {
   text-shadow: 0 0 24px rgba(242, 195, 91, 0.45);
 }
 
-.subtitle { margin: 0; color: var(--muted); }
+.logo-sm { font-size: 28px; }
+.logo-xs { font-size: 16px; }
 
 /* --- камера --- */
 .camera-view {
@@ -79,3 +73,100 @@ body {
 .fps-warn b { color: var(--gold); }
 .fps-bad b { color: var(--danger); }
 .fps-delegate { color: var(--muted); }
+
+/* --- калибровка --- */
+.calibration {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 360px);
+}
+
+.calibration-camera { height: 100%; }
+
+.calibration-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px 24px;
+  background: rgba(11, 16, 38, 0.92);
+  border-left: 1px solid rgba(95, 168, 255, 0.2);
+}
+.calibration-panel h2 { margin: 0; font-weight: 500; color: var(--muted); }
+
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.2s;
+}
+
+.check-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid var(--muted);
+}
+.check-pending .check-icon { border-top-color: var(--arcane); animation: spin 0.9s linear infinite; }
+.check-ok { background: rgba(93, 255, 160, 0.08); }
+.check-ok .check-icon { border-color: var(--ok); color: var(--ok); }
+.check-ok .check-icon::after { content: '✓'; }
+.check-warn .check-icon { border-color: var(--gold); color: var(--gold); }
+.check-warn .check-icon::after { content: '!'; }
+.check-fail { background: rgba(255, 90, 106, 0.1); }
+.check-fail .check-icon { border-color: var(--danger); color: var(--danger); }
+.check-fail .check-icon::after { content: '✕'; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.calibration-hint {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border-left: 3px solid var(--arcane);
+  background: rgba(95, 168, 255, 0.1);
+  line-height: 1.4;
+}
+.hint-warn { border-color: var(--gold); background: rgba(242, 195, 91, 0.1); }
+.hint-fail { border-color: var(--danger); background: rgba(255, 90, 106, 0.12); }
+
+.ready { position: relative; padding: 14px; border-radius: 10px; overflow: hidden; background: rgba(93, 255, 160, 0.1); text-align: center; font-weight: 600; }
+.ready-bar { position: absolute; inset: 0; background: rgba(93, 255, 160, 0.25); transform-origin: left; }
+.ready span { position: relative; }
+
+.dev-skip { margin-top: auto; padding: 8px; background: none; color: var(--muted); border: 1px dashed var(--muted); border-radius: 8px; cursor: pointer; }
+
+/* --- полигон --- */
+.sandbox { height: 100%; }
+.sandbox-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(11, 16, 38, 0.75);
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px), (orientation: portrait) {
+  .calibration { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .calibration-panel { padding: 16px; gap: 10px; border-left: 0; border-top: 1px solid rgba(95, 168, 255, 0.2); }
+  .calibration-panel .logo { display: none; }
+  .checklist { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .check { padding: 6px 8px; font-size: 13px; }
+  .sandbox-caption { white-space: normal; width: calc(100% - 32px); font-size: 13px; }
+}

@@ -1,8 +1,13 @@
+import { useGame } from './store/gameStore';
+import { Calibration } from './ui/screens/Calibration';
+import { Sandbox } from './ui/screens/Sandbox';
+
 export function App() {
+  const screen = useGame((s) => s.screen);
   return (
     <main className="app">
-      <h1 className="logo">SPELLHAND</h1>
-      <p className="subtitle">дуэль магов на жестах</p>
+      {screen === 'calibration' && <Calibration />}
+      {screen === 'sandbox' && <Sandbox />}
     </main>
   );
 }
