@@ -31,7 +31,7 @@ interface Manifest {
 const ROOT = resolve(import.meta.dirname, '..');
 const MANIFEST = resolve(ROOT, 'scripts/assets.manifest.json');
 const CACHE = resolve(ROOT, 'scripts/.cache');
-const CONCURRENCY = 3;
+const CONCURRENCY = Number(process.argv[process.argv.indexOf('--concurrency') + 1]) || 2;
 
 const STYLE =
   'Style: stylized hand-painted fantasy game art, painterly brush texture, dark navy and deep arcane blue palette ' +
@@ -51,6 +51,7 @@ const force = args.includes('--force');
 const reprocessOnly = args.includes('--reprocess');
 
 const manifest: Manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
+const MODEL = args.includes('--model') ? args[args.indexOf('--model') + 1] : manifest.model;
 const saveManifest = () => writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
 mkdirSync(CACHE, { recursive: true });
 
@@ -101,7 +102,7 @@ async function generate(ai: GoogleGenAI, a: Asset, ref: Buffer | null): Promise<
   parts.push({ text });
 
   const res = await ai.models.generateContent({
-    model: manifest.model,
+    model: MODEL,
     contents: [{ role: 'user', parts }],
     config: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: a.aspect } },
   });
@@ -110,13 +111,15 @@ async function generate(ai: GoogleGenAI, a: Asset, ref: Buffer | null): Promise<
   return Buffer.from(img.inlineData.data, 'base64');
 }
 
-async function withRetry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, tries = 20): Promise<T> {
   for (let i = 1; ; i++) {
     try {
       return await fn();
     } catch (e) {
       if (i >= tries) throw e;
-      await new Promise((r) => setTimeout(r, 2000 * i));
+      // 429 у Vertex — плавающая общая квота: чаще повторять короткими паузами выгоднее длинного backoff
+      const quota = String((e as Error).message).includes('429');
+      await new Promise((r) => setTimeout(r, quota ? 8000 + Math.random() * 4000 : 2000 * i));
     }
   }
 }
