@@ -1,5 +1,7 @@
 import type { SpellId } from '../gestures/types';
 import type { Battle, BattleEvent, Projectile, Side } from '../game/combat';
+import { ASSETS } from '../game/data/assets';
+import { SHIELDS } from '../game/data/items';
 import { GESTURE_COLOR } from './colors';
 
 export interface Point {
@@ -68,7 +70,16 @@ export class SpellVfx {
   private flashes: { side: Side; until: number; color: string }[] = [];
   private shake = 0;
 
-  constructor(private ctx: CanvasRenderingContext2D) {}
+  /** Текстуры рунических кругов щитов (Nano Banana, чёрный фон → аддитивно). */
+  private runes = new Map<string, HTMLImageElement>();
+
+  constructor(private ctx: CanvasRenderingContext2D) {
+    for (const sh of SHIELDS) {
+      const img = new Image();
+      img.src = ASSETS.rune(sh.id);
+      this.runes.set(sh.id, img);
+    }
+  }
 
   /** Всплывающее число урона/лечения. */
   floatText(p: Point, text: string, color: string) {
@@ -236,10 +247,27 @@ export class SpellVfx {
     ctx.shadowBlur = 0;
   }
 
-  private drawShield(c: Point, r: number, durabilityFrac: number, color: string, flash: string | null, time: number) {
+  private drawShield(
+    c: Point,
+    r: number,
+    durabilityFrac: number,
+    color: string,
+    flash: string | null,
+    time: number,
+    rune?: HTMLImageElement,
+  ) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(c.x, c.y);
+    if (rune?.complete && rune.naturalWidth) {
+      // текстура руны вращается, чёрный фон исчезает при аддитивном смешении
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.75 + 0.15 * Math.sin(time / 200) + (flash ? 0.3 : 0);
+      ctx.rotate(-time / 2500);
+      ctx.drawImage(rune, -r * 1.08, -r * 1.08, r * 2.16, r * 2.16);
+      ctx.restore();
+    }
     // рунический круг
     ctx.globalAlpha = 0.18 + 0.06 * Math.sin(time / 200);
     ctx.fillStyle = flash ?? color;
@@ -302,7 +330,15 @@ export class SpellVfx {
     // щиты
     const ps = battle.player.shield;
     if (ps.up) {
-      this.drawShield(layout.playerCenter, layout.shieldRadius, ps.durability / ps.max, battle.loadout.shield.color, flashFor('player'), now);
+      this.drawShield(
+        layout.playerCenter,
+        layout.shieldRadius,
+        ps.durability / ps.max,
+        battle.loadout.shield.color,
+        flashFor('player'),
+        now,
+        this.runes.get(battle.loadout.shield.id),
+      );
     }
     const es = battle.enemy.shield;
     if (es.up) {
