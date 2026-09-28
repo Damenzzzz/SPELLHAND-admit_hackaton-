@@ -229,7 +229,7 @@ export const TEMPLATES: GestureTemplate[] = [
     ],
     motion: {
       kind: 'hold',
-      howTo: 'Держи кулак — щит поднят, пока держишь',
+      howTo: 'Держи кулак — щит поднят. Сожми кулак в последний миг перед ударом — отразишь снаряд во врага',
       weakHint: 'Держи кулак ровно',
     },
     ghost: { ext: { thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0 }, facing: 1 },

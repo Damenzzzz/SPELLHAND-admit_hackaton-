@@ -18,6 +18,8 @@ export interface ShieldState {
   brokenUntil: number;
   cooldownMs: number;
   reflect: number;
+  /** Когда щит подняли в последний раз (часы боя) — для парирования. */
+  upAt: number;
 }
 
 export interface Fighter {
@@ -62,6 +64,10 @@ export type BattleEvent =
       combo?: number;
     }
   | { type: 'comboBreak'; combo: number }
+  /** Отражение щитом в тайминг: leadMs — насколько раньше попадания поднят щит. */
+  | { type: 'parry'; side: Side; leadMs: number; projectile: Projectile }
+  /** Почти парирование: deltaMs < 0 — рано, > 0 — поздно. */
+  | { type: 'parryMiss'; side: Side; deltaMs: number }
   | { type: 'reject'; spell: GestureId; reason: string; kind: RejectKind }
   | { type: 'hit'; target: Side; spell: SpellId; hpDamage: number; shieldDamage: number; blocked: boolean }
   | { type: 'shieldUp' | 'shieldDown' | 'shieldBreak' | 'shieldRestored'; side: Side }
@@ -74,13 +80,13 @@ export type BattleEvent =
 
 type Listener = (e: BattleEvent) => void;
 
-function makeFighter(hp: number, shield: Omit<ShieldState, 'up' | 'brokenUntil' | 'durability'>): Fighter {
+function makeFighter(hp: number, shield: Omit<ShieldState, 'up' | 'brokenUntil' | 'durability' | 'upAt'>): Fighter {
   return {
     hp,
     maxHp: hp,
     mana: COMBAT.mana,
     maxMana: COMBAT.mana,
-    shield: { ...shield, up: false, durability: shield.max, brokenUntil: 0 },
+    shield: { ...shield, up: false, durability: shield.max, brokenUntil: 0, upAt: -Infinity },
     cooldowns: {},
     slowedUntil: 0,
     slowFactor: 0,
@@ -139,6 +145,8 @@ export class Battle {
   }
 
   /** Итоговый урон игрока: база × качество жеста × посох. */
+  private lastPlayerHitAt = -Infinity;
+
   /** Испытание дня может ограничить заклинания игрока. */
   allowedSpells: SpellId[] | null = null;
 
@@ -293,7 +301,12 @@ export class Battle {
     const sh = this.fighter(side).shield;
     if (sh.up === up) return;
     sh.up = up;
+    if (up) sh.upAt = this.t;
     this.emit({ type: up ? 'shieldUp' : 'shieldDown', side });
+    // поднял щит сразу после попадания — «поздно на X мс»
+    if (up && side === 'player' && this.t - this.lastPlayerHitAt <= COMBAT.parryWindowMs) {
+      this.emit({ type: 'parryMiss', side, deltaMs: Math.round(this.t - this.lastPlayerHitAt) });
+    }
   }
 
   tick(dt: number, playerCharging: boolean) {
@@ -352,6 +365,17 @@ export class Battle {
     let shieldDamage = 0;
     const blocked = sh.up && !sh.brokenUntil;
 
+    // парирование игрока: щит поднят в последний момент — снаряд летит обратно
+    if (blocked && p.to === 'player') {
+      const lead = this.t - sh.upAt;
+      if (lead <= COMBAT.parryWindowMs) {
+        const back = this.spawn({ ...p, from: 'player', to: 'enemy', spawnT: this.t, hitT: this.t + Math.max(150, p.hitT - p.spawnT) });
+        this.emit({ type: 'parry', side: 'player', leadMs: Math.round(lead), projectile: back });
+        return;
+      }
+      if (lead <= COMBAT.parryHintMs) this.emit({ type: 'parryMiss', side: 'player', deltaMs: -Math.round(lead) });
+    }
+
     if (blocked) {
       // контр-логика: щит гасит огонь и лёд, молния пробивает часть, ветер бьёт по щиту
       shieldDamage = p.shieldDamage ?? p.damage * (1 - p.pierce);
@@ -385,6 +409,7 @@ export class Battle {
 
     hpDamage = Math.round(hpDamage);
     target.hp = Math.max(0, target.hp - hpDamage);
+    if (p.to === 'player' && hpDamage > 0) this.lastPlayerHitAt = this.t;
     this.emit({ type: 'hit', target: p.to, spell: p.spell, hpDamage, shieldDamage: Math.round(shieldDamage), blocked });
   }
 

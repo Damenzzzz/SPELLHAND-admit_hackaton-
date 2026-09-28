@@ -158,6 +158,11 @@ export function BattleScreen() {
         case 'telegraph':
           sfx.enemyTelegraph();
           break;
+        case 'parry':
+          sfx.block();
+          sfx.cast('lightning');
+          stats.shieldBlocked(1);
+          break;
         case 'comboBreak':
           if (e.combo >= 3) toast(`Серия ×${e.combo} прервана`, 'info');
           break;

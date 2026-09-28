@@ -161,6 +161,21 @@ export class SpellVfx {
           });
         }
         break;
+      case 'parry': {
+        // отражённый снаряд вылетает из руки игрока
+        this.origins.set(e.projectile.id, { ...layout.playerHand });
+        this.burst(layout.playerCenter, '#f2c35b', 40, 320);
+        this.flashes.push({ side: 'player', until: now + 250, color: '#f2c35b' });
+        this.floatText(layout.playerHand, 'ПАРИРОВАНИЕ!', '#f2c35b');
+        break;
+      }
+      case 'parryMiss':
+        this.floatText(
+          { x: layout.playerHand.x, y: layout.playerHand.y + 50 },
+          e.deltaMs < 0 ? `рано на ${-e.deltaMs} мс` : `поздно на ${e.deltaMs} мс`,
+          '#ff9a3d',
+        );
+        break;
       case 'reflect':
         this.flashes.push({ side: e.side, until: now + 250, color: '#f2c35b' });
         break;

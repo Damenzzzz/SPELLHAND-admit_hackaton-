@@ -136,3 +136,47 @@ describe('оценки и комбо', () => {
     expect(b.combo).toBe(0);
   });
 });
+
+describe('парирование щитом', () => {
+  const fire = (b: Battle) => b.enemyCast('fireball'); // летит 650 мс
+
+  it('щит в последние 200 мс до попадания — снаряд отражается во врага', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    const ev: string[] = [];
+    b.on((e) => (e.type === 'parry' || e.type === 'parryMiss') && ev.push(e.type));
+    fire(b);
+    step(b, 520);
+    b.setPlayerHolds(true, false);
+    step(b, 300);
+    expect(ev).toEqual(['parry']);
+    expect(b.player.hp).toBe(100);
+    expect(b.player.shield.durability).toBe(100);
+    step(b, 900);
+    expect(b.enemy.hp).toBeLessThan(b.enemy.maxHp);
+  });
+
+  it('щит заранее — обычный блок с подсказкой «рано»', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    const miss: number[] = [];
+    b.on((e) => e.type === 'parryMiss' && miss.push(e.deltaMs));
+    fire(b);
+    step(b, 250);
+    b.setPlayerHolds(true, false);
+    step(b, 600);
+    expect(miss.length).toBe(1);
+    expect(miss[0]).toBeLessThan(0);
+    expect(b.player.shield.durability).toBeLessThan(100);
+  });
+
+  it('щит сразу после попадания — «поздно на X мс»', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    const miss: number[] = [];
+    b.on((e) => e.type === 'parryMiss' && miss.push(e.deltaMs));
+    fire(b);
+    step(b, 700);
+    b.setPlayerHolds(true, false);
+    expect(miss.length).toBe(1);
+    expect(miss[0]).toBeGreaterThan(0);
+    expect(b.player.hp).toBeLessThan(100);
+  });
+});
