@@ -46,6 +46,16 @@
 - Звуки синтезируются Web Audio (`src/game/sfx.ts`) — без аудиофайлов.
 - **AR-посох:** экипированный 3D-посох (GLB) держится в руке на видео — позиция по запястью, направление запястье → MCP среднего пальца, навершие светится цветом взведённого заклинания (`src/render/StaffAttachment.tsx`, React Three Fiber).
 
+## Онлайн
+
+Своего бэкенда нет — всё P2P, поэтому игра работает с одной ссылкой без регистрации и ключей.
+
+- **Матчмейкинг и бой** (`src/net/matchmaking.ts`, `src/net/pvp.ts`): WebRTC через [Trystero](https://github.com/dmotz/trystero), сигналинг — публичные Nostr-релеи. Presence в комнате `lobby`: два самых ранних свободных игрока — пара, игрок с меньшим id предлагает матч, оба уходят в комнату `match-{roomId}`.
+- События: `ready`, `countdown {startAt}`, `cast {spell, damage, quality, …}`, `state {hp, shield…}` каждые 250 мс, `end`. Каждый клиент авторитетен по **своему** HP: входящий каст разрешается его щитом. Статы посохов и щитов работают и в PvP.
+- **Нет соперника за 20 с → бой с ботом «Призрак мага»** — одиночный игрок не застревает.
+- **Лидерборд** (`src/net/leaderboard.ts`): каждый результат — подписанное событие NIP-78 на публичных Nostr-релеях с анонимным ключом устройства; топ-20 по победам и точности. Античита нет (хакатон).
+- Supabase не подключали: для этого нужен аккаунт. Транспорт изолирован в `src/net`, у Trystero есть стратегия `@trystero-p2p/supabase` с тем же API.
+
 ## Ассеты
 
 Все ассеты сгенерированы офлайн и закоммичены в `public/assets` — ключи генерации в клиент не попадают.
@@ -73,10 +83,10 @@ npm test       # тесты распознавателя и боевой сис�
 - [x] Фаза 1 — распознавание 6 жестов, режим «ошибка», бой, бот, итоги, академия
 - [x] Фаза 2 — 10 уровней, кампания, монеты, магазин, сохранение, dwell-меню, звуки, ломающийся щит, рекорды
 - [x] Фаза 3 — сгенерированные 2D-ассеты, 5 посохов в 3D, AR-посох в руке, прогресс загрузки
-- [ ] Фаза 4 — онлайн PvP
+- [x] Фаза 4 — онлайн PvP (P2P), бот «Призрак мага» через 20 с, глобальный лидерборд
 
 ## Стек и референсы
 
-Vite · React · TypeScript · @mediapipe/tasks-vision · three.js · @react-three/fiber · @react-three/drei · zustand · Vitest · Vercel. Ассеты: @google/genai (Nano Banana 2), sharp, @gltf-transform/cli.
+Vite · React · TypeScript · @mediapipe/tasks-vision · Trystero · nostr-tools · three.js · @react-three/fiber · @react-three/drei · zustand · Vitest · Vercel. Ассеты: @google/genai (Nano Banana 2), sharp, @gltf-transform/cli.
 
 Референсы (только идеи, код не копировался): bunkerapps/Jutsu-Hero, sainipriyanshi7284/Arcana_wizard_duel_game, jaswin-codes/jutsu_code_stage1. One Euro filter — по статье Casiez et al., 2012.
