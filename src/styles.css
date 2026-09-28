@@ -39,3 +39,43 @@ body {
 }
 
 .subtitle { margin: 0; color: var(--muted); }
+
+/* --- камера --- */
+.camera-view {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+}
+
+.camera-mirror {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(-1);
+}
+
+.camera-video,
+.hand-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.camera-video { object-fit: cover; }
+
+.fps-counter {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(11, 16, 38, 0.7);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(4px);
+}
+.fps-counter b { font-size: 16px; }
+.fps-ok b { color: var(--ok); }
+.fps-warn b { color: var(--gold); }
+.fps-bad b { color: var(--danger); }
+.fps-delegate { color: var(--muted); }
