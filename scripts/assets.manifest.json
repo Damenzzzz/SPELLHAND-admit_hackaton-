@@ -259,7 +259,7 @@
         512
       ],
       "out": "public/assets/images/enemies/8.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "bust portrait of a lich with a skull face, ornate dark crown and teal soul fire in the eye sockets, facing the viewer, character portrait"
     },
     {
@@ -272,7 +272,7 @@
         512
       ],
       "out": "public/assets/images/enemies/9.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "bust portrait of a demon gate guardian with crimson skin, large curved horns and molten armor, facing the viewer, character portrait"
     },
     {
@@ -285,7 +285,7 @@
         512
       ],
       "out": "public/assets/images/enemies/10.webp",
-      "status": "todo",
+      "status": "done",
       "prompt": "bust portrait of Archmage Morven, the final boss: an old powerful sorcerer with a long silver beard, violet and gold robes, glowing arcane eyes and floating runes, facing the viewer, character portrait"
     },
     {
