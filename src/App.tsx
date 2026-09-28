@@ -6,6 +6,7 @@ import { Academy } from './ui/screens/Academy';
 import { BattleScreen } from './ui/screens/Battle';
 import { Calibration } from './ui/screens/Calibration';
 import { Campaign } from './ui/screens/Campaign';
+import { Leaderboard } from './ui/screens/Leaderboard';
 import { Menu } from './ui/screens/Menu';
 import { Online } from './ui/screens/Online';
 import { Results } from './ui/screens/Results';
@@ -28,6 +29,7 @@ export function App() {
       {screen === 'campaign' && <Campaign />}
       {screen === 'shop' && <Shop />}
       {screen === 'online' && <Online />}
+      {screen === 'leaderboard' && <Leaderboard />}
       <SoundBadge />
       {isDev && screen !== 'calibration' && <DevTools />}
     </main>

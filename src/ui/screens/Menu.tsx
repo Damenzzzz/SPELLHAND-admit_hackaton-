@@ -25,6 +25,7 @@ export function Menu() {
         </DwellButton>
         <DwellButton onSelect={() => go('online')}>🌐 Онлайн-дуэль</DwellButton>
         <DwellButton onSelect={() => go('shop')}>🛒 Магазин</DwellButton>
+        <DwellButton onSelect={() => go('leaderboard')}>🏆 Лидерборд</DwellButton>
         <DwellButton onSelect={() => go('calibration')}>🎯 Калибровка</DwellButton>
       </nav>
     </ScreenShell>

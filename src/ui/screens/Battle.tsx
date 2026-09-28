@@ -173,6 +173,18 @@ export function BattleScreen() {
               setup.kind === 'campaign'
                 ? applyBattleResult(level.id, won, sum.accuracy, battle.t)
                 : applyOnlineResult(won, sum.accuracy, level.reward, online);
+            // в глобальный лидерборд — фоном, без ожидания (dev-сессии и тесты не публикуем)
+            if (!isDev) void import('../../net/leaderboard')
+              .then(({ submitResult }) =>
+                submitResult({
+                  nickname: useSave.getState().nickname,
+                  mode: setup.kind,
+                  level: level.id,
+                  won,
+                  accuracy: sum.accuracy,
+                }),
+              )
+              .catch(() => {});
             finishBattle({
               level: level.id,
               mode: setup.kind,
