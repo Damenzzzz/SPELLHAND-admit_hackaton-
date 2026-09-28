@@ -89,8 +89,14 @@ function Staff({ id }: { id: string }) {
     const snap = useGesture.getState().snap;
     const active = snap?.active;
     const pulse = 1 + 0.25 * Math.sin(clock.elapsedTime * 8);
+    const over = snap?.overcharge ?? 0;
     for (const part of glow) {
-      if (active) {
+      if (over > 0) {
+        // перезаряд близко: навершие краснеет и мигает всё чаще
+        tint.set('#ff2d2d');
+        part.material.emissive.lerp(tint, 0.3);
+        part.material.emissiveIntensity = part.baseIntensity * (2.5 + 2 * Math.sin(clock.elapsedTime * (10 + 30 * over)));
+      } else if (active) {
         tint.set(GESTURE_COLOR[active]);
         part.material.emissive.lerp(tint, 0.25);
         part.material.emissiveIntensity = part.baseIntensity * (1.6 + (snap?.charge ?? 0) * 1.5) * pulse;

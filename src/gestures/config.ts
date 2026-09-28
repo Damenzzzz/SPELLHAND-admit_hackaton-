@@ -47,4 +47,6 @@ export const GESTURE_CONFIG = {
   /** Заряд огненного шара: от holdMin до holdMax удержания. */
   chargeMinMs: 500,
   chargeMaxMs: 1500,
+  /** Дольше — перезаряд: шар взрывается в руке. */
+  overchargeMs: 2300,
 };

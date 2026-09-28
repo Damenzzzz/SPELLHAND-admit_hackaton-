@@ -5,7 +5,7 @@ import { ASSETS } from '../../game/data/assets';
 import { dailyChallenge, dailyScore } from '../../game/data/daily';
 import { gradeOf } from '../../game/data/grades';
 import { GHOST_LEVEL, LEVEL_BY_ID, onlineLevel } from '../../game/data/levels';
-import { SPELLS } from '../../game/data/spells';
+import { COMBAT, SPELLS } from '../../game/data/spells';
 import { applyBattleResult, applyOnlineResult, currentLoadout } from '../../game/economy';
 import { recordSession } from '../../game/progress';
 import { sfx } from '../../game/sfx';
@@ -120,7 +120,11 @@ export function BattleScreen() {
         if (ok && e.shard === 1) stats.success(e.gesture, e.quality);
       } else {
         stats.onGesture(e);
-        battle.breakCombo();
+        if (e.type === 'overcharge') {
+          battle.backfire(COMBAT.backfireDamage);
+          sfx.hit();
+          toast('💥 Перезаряд! Шар взорвался в руке', 'bad');
+        } else battle.breakCombo();
       }
     });
 

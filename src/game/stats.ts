@@ -86,6 +86,9 @@ export class BattleStats {
     } else if (e.type === 'misfire') {
       this.failures++;
       this.addError(e.id, e.text, e.gesture);
+    } else if (e.type === 'overcharge') {
+      this.failures++;
+      this.addError('fireball_overcharge', 'Перезаряд — шар взорвался в руке', 'fireball');
     }
   }
 

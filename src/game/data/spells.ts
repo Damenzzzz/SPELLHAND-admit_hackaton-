@@ -107,4 +107,6 @@ export const COMBAT = {
   parryWindowMs: 200,
   /** Подсказка «рано на X мс», если щит поднят чуть раньше окна. */
   parryHintMs: 500,
+  /** Урон себе при перезаряде огненного шара. */
+  backfireDamage: 8,
 };

@@ -15,6 +15,7 @@ const ADVICE: Record<string, string> = {
   lightning_motion_weak: 'Молния — это быстрый взмах вниз, как удар хлыстом.',
   ice_motion_weak: 'Осколки льда — короткие резкие кивки кистью вниз.',
   wind_motion_weak: 'Ветер — обе руки одновременно и быстро в одну сторону.',
+  fireball_overcharge: 'Полный заряд — через полторы секунды; держишь дольше двух — шар взрывается. Толкай, как только посох засиял.',
 };
 
 const FINGER_RU: Record<string, string> = {

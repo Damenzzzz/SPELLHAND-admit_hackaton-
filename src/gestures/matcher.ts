@@ -38,6 +38,8 @@ export type GestureEvent =
       weakest?: { id: string; hint: string; score: number };
     }
   | { type: 'misfire'; gesture: GestureId; id: string; text: string; t: number }
+  /** Огненный шар держали слишком долго — взорвался в руке. */
+  | { type: 'overcharge'; gesture: GestureId; t: number }
   | {
       type: 'nearMiss';
       gesture: GestureId;
@@ -59,6 +61,8 @@ export interface GestureSnapshot {
   quality: number;
   /** Заряд огненного шара 0..1. */
   charge: number;
+  /** 0..1 — опасность перезаряда (после полного заряда до взрыва в руке). */
+  overcharge: number;
   hint: Hint | null;
   debug: { growth: number; vx: number; vy: number; tipVy: number };
 }
@@ -215,6 +219,7 @@ export class GestureEngine {
     const best = hands.length ? (twoHandTop ?? all[0]) : null;
 
     this.stabilize(best, scores, keys, now);
+    this.checkOvercharge(now);
 
     const activeIdx = this.active ? keys.indexOf(this.activeKey) : -1;
     const debug = this.detectMotion(keys, now);
@@ -222,6 +227,10 @@ export class GestureEngine {
     const charge =
       this.active === 'fireball'
         ? Math.max(0, Math.min(1, (now - this.activeSince - C.chargeMinMs) / (C.chargeMaxMs - C.chargeMinMs)))
+        : 0;
+    const overcharge =
+      this.active === 'fireball'
+        ? Math.max(0, Math.min(1, (now - this.activeSince - C.chargeMaxMs) / (C.overchargeMs - C.chargeMaxMs)))
         : 0;
 
     const hint = this.buildHint(hands, nearMissCandidate(scores), brightness, now);
@@ -238,8 +247,31 @@ export class GestureEngine {
       activeHandIdx: activeIdx,
       quality: devActive ? 0.92 : this.quality,
       charge: devActive === 'fireball' ? 1 : charge,
+      overcharge: devActive ? 0 : overcharge,
       hint,
       debug,
+    };
+  }
+
+  /** Перезаряд: шар держат дольше overchargeMs — срыв, поза снимается и блокируется. */
+  private checkOvercharge(now: number) {
+    if (this.active !== 'fireball' || now - this.activeSince < C.overchargeMs) return;
+    this.emit({ type: 'overcharge', gesture: 'fireball', t: now });
+    this.locks.set('fireball', now + 1000);
+    this.deactivate(now, false);
+    this.candidate = null;
+    this.stable = 0;
+    this.motionHint = {
+      until: now + 1500,
+      hint: {
+        kind: 'motion',
+        category: 'motion',
+        gesture: 'fireball',
+        lines: ['Перезаряд! Толкай шар, пока он не раскалился'],
+        fingers: [],
+        handIdx: -1,
+        key: `overcharge:${now}`,
+      },
     };
   }
 

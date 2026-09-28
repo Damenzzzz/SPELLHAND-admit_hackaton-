@@ -163,6 +163,16 @@ export class Battle {
     return Math.round(base * (COMBAT.qualityBase + COMBAT.qualityK * quality) * gradeOf(quality).mul * combo * mul);
   }
 
+  /** Перезаряд огненного шара: взрыв в руке игрока. */
+  backfire(damage: number) {
+    if (this.over) return;
+    this.player.hp = Math.max(0, this.player.hp - damage);
+    this.lastPlayerHitAt = this.t;
+    this.emit({ type: 'hit', target: 'player', spell: 'fireball', hpDamage: damage, shieldDamage: 0, blocked: false });
+    this.breakCombo();
+    this.checkEnd();
+  }
+
   /** Near-miss или осечка жеста обрывают серию. */
   breakCombo() {
     if (this.combo > 0) this.emit({ type: 'comboBreak', combo: this.combo });

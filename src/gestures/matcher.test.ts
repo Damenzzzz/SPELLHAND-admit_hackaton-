@@ -204,3 +204,15 @@ describe('баги из ревью', () => {
     expect(snap.hint?.lines[0]).toBe('Мало света — повернись к окну или лампе');
   });
 });
+
+describe('перезаряд', () => {
+  it('огненный шар дольше 2.3 с — взрыв в руке, поза снимается', () => {
+    const engine = new GestureEngine();
+    const events: GestureEvent[] = [];
+    engine.on((e) => events.push(e));
+    const snap = run(engine, hold([hand({ ext: OPEN })], 90));
+    expect(events.some((e) => e.type === 'overcharge')).toBe(true);
+    expect(events.some((e) => e.type === 'cast')).toBe(false);
+    expect(snap.hint?.lines[0]).toContain('Перезаряд');
+  });
+});
