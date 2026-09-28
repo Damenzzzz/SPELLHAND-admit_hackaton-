@@ -250,6 +250,10 @@ export function BattleScreen() {
                   : `🛡️ ${Math.ceil(player.shield.durability)}`
               }
             />
+            <div className="loadout">
+              {battle.loadout.staff.icon} {battle.loadout.staff.effect} · {battle.loadout.shield.icon}{' '}
+              {battle.loadout.shield.name}
+            </div>
           </div>
           {phase === 'fight' && <HintCard />}
           <div className="spellbar">

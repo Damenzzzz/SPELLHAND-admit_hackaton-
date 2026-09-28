@@ -3,6 +3,7 @@ import { gestureEngine } from '../gestures/matcher';
 import { useGesture } from '../store/gestureStore';
 import { useVision, type Handedness, type TrackedHand } from '../store/visionStore';
 import { CameraError, startCamera } from './camera';
+import { devHands } from './devFeed';
 
 const BASE = import.meta.env.BASE_URL;
 const WASM_PATH = `${BASE}mediapipe/wasm`;
@@ -72,11 +73,12 @@ function runLoop(lm: HandLandmarker) {
       const result = lm.detectForVideo(video, now);
       frames++;
 
-      const hands: TrackedHand[] = result.landmarks.map((landmarks, i) => ({
+      const detected: TrackedHand[] = result.landmarks.map((landmarks, i) => ({
         landmarks,
         handedness: (result.handedness[i]?.[0]?.categoryName ?? 'Right') as Handedness,
         score: result.handedness[i]?.[0]?.score ?? 0,
       }));
+      const hands = devHands() ?? detected;
 
       const patch: Partial<ReturnType<typeof useVision.getState>> = { hands, frameTime: now };
 
