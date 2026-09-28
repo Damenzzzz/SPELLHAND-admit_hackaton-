@@ -34,8 +34,12 @@ export interface BattleResult {
 }
 
 /** Собирает статистику жестов за бой — для экрана итогов и режима «ошибка». */
+/** Щит засчитывается удачным жестом, если продержался столько мс (или заблокировал удар). */
+export const SHIELD_COUNT_MS = 500;
+
 export class BattleStats {
   private quality = new Map<GestureId, number[]>();
+  private shield: { upAt: number; counted: boolean } | null = null;
   private errors = new Map<string, ErrorStat>();
   private failures = 0;
 
@@ -44,6 +48,30 @@ export class BattleStats {
     const arr = this.quality.get(g) ?? [];
     arr.push(quality);
     this.quality.set(g, arr);
+  }
+
+  // Щит — удерживаемая поза: один зачёт за подъём, если он заблокировал удар или
+  // продержался SHIELD_COUNT_MS. Мигающий щит точность и монеты не накручивает.
+  shieldUp(t: number) {
+    this.shield = { upAt: t, counted: false };
+  }
+
+  shieldDown() {
+    this.shield = null;
+  }
+
+  shieldBlocked(quality: number) {
+    this.creditShield(quality);
+  }
+
+  shieldTick(t: number, quality: number) {
+    if (this.shield && t - this.shield.upAt >= SHIELD_COUNT_MS) this.creditShield(quality);
+  }
+
+  private creditShield(quality: number) {
+    if (!this.shield || this.shield.counted) return;
+    this.shield.counted = true;
+    this.success('shield', quality);
   }
 
   /** События распознавателя: near-miss и осечки — это ошибки. */

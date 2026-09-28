@@ -74,6 +74,7 @@ export function BattleScreen() {
     const countdownMs = setup.kind === 'online' ? Math.max(500, setup.startAt - Date.now()) : COUNTDOWN_MS;
     const link = online ? currentLink() : null;
     let remoteEnded = false;
+    const gestureQuality = () => useGesture.getState().snap?.quality ?? 1;
     if (link) {
       link.onCast = (c) => phaseNow === 'fight' && battle.remoteCast(c);
       link.onState = (st) => battle.applyRemoteState(st);
@@ -133,14 +134,18 @@ export function BattleScreen() {
           sfx.enemyTelegraph();
           break;
         case 'hit':
+          if (e.blocked && e.target === 'player') stats.shieldBlocked(gestureQuality());
           if (e.blocked) sfx.block();
           else if (e.hpDamage > 0) sfx.hit();
           break;
         case 'shieldUp':
           if (e.side === 'player') {
             sfx.shieldUp();
-            stats.success('shield', useGesture.getState().snap?.quality ?? 1);
+            stats.shieldUp(battle.t);
           }
+          break;
+        case 'shieldDown':
+          if (e.side === 'player') stats.shieldDown();
           break;
         case 'shieldBreak':
           sfx.shieldBreak();
@@ -253,6 +258,7 @@ export function BattleScreen() {
       if (phaseNow === 'fight') {
         battle.setPlayerHolds(active === 'shield', active === 'heal');
         battle.tick(dt, active === 'fireball' || active === 'lightning');
+        stats.shieldTick(battle.t, gestureQuality());
       }
 
       const canvas = canvasRef.current!;
