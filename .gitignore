@@ -4,7 +4,8 @@ dist
 .env*
 .DS_Store
 *.log
-# генерируется postinstall-скриптом (scripts/copy-mediapipe.mjs)
-public/mediapipe/
+# wasm копируется из node_modules postinstall-скриптом (scripts/copy-mediapipe.mjs);
+# модель hand_landmarker.task закоммичена — установка не зависит от googleapis
+public/mediapipe/wasm/
 *.tsbuildinfo
 scripts/.cache/
