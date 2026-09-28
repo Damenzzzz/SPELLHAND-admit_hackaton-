@@ -165,6 +165,16 @@ export function BattleScreen() {
         case 'telegraph':
           sfx.enemyTelegraph();
           break;
+        case 'comboCast':
+          sfx.victory();
+          toast(`⚡ Комбо «${e.name}»! +${e.bonus} урона`, 'good');
+          break;
+        case 'blownAway':
+          toast(`🌪️ Ветер сдул снарядов: ${e.count}`, 'good');
+          break;
+        case 'burn':
+          if (e.on && e.side === 'player') toast('🔥 Горишь! Погаси льдом или лечением', 'bad');
+          break;
         case 'runeCast':
           sfx.cast(e.rune === 'chain' ? 'lightning' : e.rune === 'prison' ? 'ice' : e.rune === 'meteor' ? 'fireball' : 'heal');
           sfx.victory();
@@ -405,6 +415,7 @@ export function BattleScreen() {
                   : `🛡️ ${Math.ceil(player.shield.durability)}`
               }
             />
+            {t < player.burningUntil && <div className="status status-burn">🔥 горишь — лёд или лечение</div>}
             <div className="loadout">
               {battle.loadout.staff.icon} {battle.loadout.staff.effect} · {battle.loadout.shield.icon}{' '}
               {battle.loadout.shield.name}
@@ -445,6 +456,7 @@ export function BattleScreen() {
           </div>
           <Bar value={enemy.hp} max={enemy.maxHp} className="bar-hp bar-enemy" />
           {t < enemy.slowedUntil && <div className="status">❄️ замедлен</div>}
+          {t < enemy.burningUntil && <div className="status status-burn">🔥 горит</div>}
         </div>
         <div
           ref={enemyRef}

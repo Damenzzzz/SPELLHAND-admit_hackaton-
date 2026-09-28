@@ -18,7 +18,12 @@ export class BotAI {
   constructor(private battle: Battle) {}
 
   private pickSpell(): SpellId {
-    const entries = Object.entries(this.battle.level.spellWeights) as [SpellId, number][];
+    const b = this.battle;
+    // горит — гасит себя льдом, если умеет
+    const burning = b.enemy.burningUntil > b.t;
+    const entries = (Object.entries(b.level.spellWeights) as [SpellId, number][]).map(
+      ([s, w]) => [s, burning && s === 'ice' ? w * 4 : w] as [SpellId, number],
+    );
     const total = entries.reduce((a, [, w]) => a + w, 0);
     let r = this.battle.rng() * total;
     for (const [spell, w] of entries) {

@@ -221,3 +221,56 @@ describe('руны в бою', () => {
     expect(c.player.shield.durability).toBe(c.player.shield.max);
   });
 });
+
+describe('стихии и комбо', () => {
+  const fresh = (b: Battle) => {
+    b.player.mana = 100;
+    b.player.cooldowns = {};
+  };
+
+  it('огненный шар поджигает врага: урон идёт и после попадания', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    b.playerCast('fireball', 0.9, 0, 1);
+    step(b, 700);
+    const after = b.enemy.hp;
+    expect(b.enemy.burningUntil).toBeGreaterThan(b.t);
+    step(b, 1500);
+    expect(b.enemy.hp).toBeLessThan(after);
+  });
+
+  it('лёд гасит горение игрока', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    b.player.burningUntil = 5000;
+    b.playerCast('ice', 0.9, 1, 1);
+    expect(b.player.burningUntil).toBe(0);
+  });
+
+  it('ветер сдувает вражеские снаряды в полёте и слабеет', () => {
+    const b = new Battle(LEVEL_BY_ID[7], loadout, seeded());
+    b.enemyCast('fireball');
+    b.enemyCast('lightning');
+    step(b, 50);
+    const blown: number[] = [];
+    b.on((e) => e.type === 'blownAway' && blown.push(e.count));
+    b.playerCast('wind', 0.9, 1, 1);
+    expect(blown).toEqual([2]);
+    expect(b.projectiles.filter((p) => p.to === 'player')).toHaveLength(0);
+    step(b, 1000);
+    expect(b.player.hp).toBe(100);
+  });
+
+  it('лёд → молния за 1.5 с = «Шторм» с бонусом', () => {
+    const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
+    const combos: string[] = [];
+    b.on((e) => e.type === 'comboCast' && combos.push(e.name));
+    b.playerCast('lightning', 0.85, 1, 1);
+    const plain = b.projectiles.at(-1)!.damage;
+    fresh(b);
+    b.playerCast('ice', 0.85, 1, 1);
+    step(b, 300);
+    fresh(b);
+    b.playerCast('lightning', 0.85, 1, 1);
+    expect(combos).toEqual(['Шторм']);
+    expect(b.projectiles.at(-1)!.damage).toBeGreaterThan(plain);
+  });
+});

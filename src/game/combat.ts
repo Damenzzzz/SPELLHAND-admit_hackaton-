@@ -1,6 +1,7 @@
 import type { GestureId, SpellId } from '../gestures/types';
 import { BotAI } from './ai';
 import type { LevelDef } from './data/levels';
+import { COMBO_WINDOW_MS, COMBOS, STATUS } from './data/combos';
 import { COMBO, gradeOf, type GradeId } from './data/grades';
 import { COMBAT, RUNE_COMBAT, SPELLS } from './data/spells';
 import { RUNES, type RuneId } from '../gestures/runes/runes';
@@ -37,6 +38,8 @@ export interface Fighter {
   interruptedUntil: number;
   /** Заморожен (не может колдовать) до этого момента. */
   frozenUntil: number;
+  /** Горение: до какого момента (огонь, снимается льдом или лечением). */
+  burningUntil: number;
 }
 
 export interface Projectile {
@@ -54,6 +57,8 @@ export interface Projectile {
   interrupt?: boolean;
   /** Большой снаряд (руна «Метеор») — для VFX. */
   big?: boolean;
+  /** Поджигает цель при попадании (огонь, «Огненный вихрь»). */
+  burn?: boolean;
   /** Заморозка цели (руна «Ледяная тюрьма»), действует сквозь щит. */
   freezeMs?: number;
 }
@@ -78,6 +83,9 @@ export type BattleEvent =
   | { type: 'reject'; name: string; spell?: GestureId; reason: string; kind: RejectKind }
   | { type: 'runeCast'; rune: RuneId; score: number; damage: number; projectile?: Projectile }
   | { type: 'frozen'; side: Side; ms: number }
+  | { type: 'comboCast'; name: string; bonus: number }
+  | { type: 'burn'; side: Side; on: boolean }
+  | { type: 'blownAway'; count: number }
   | { type: 'hit'; target: Side; spell: SpellId; hpDamage: number; shieldDamage: number; blocked: boolean }
   | { type: 'shieldUp' | 'shieldDown' | 'shieldBreak' | 'shieldRestored'; side: Side }
   | { type: 'heal'; side: Side; amount: number }
@@ -102,6 +110,7 @@ function makeFighter(hp: number, shield: Omit<ShieldState, 'up' | 'brokenUntil' 
     healing: null,
     interruptedUntil: 0,
     frozenUntil: 0,
+    burningUntil: 0,
   };
 }
 
@@ -172,6 +181,9 @@ export class Battle {
     const combo = 1 + COMBO.stepBonus * Math.min(this.combo, COMBO.maxSteps);
     return Math.round(base * (COMBAT.qualityBase + COMBAT.qualityK * quality) * gradeOf(quality).mul * combo * mul);
   }
+
+  /** Последнее заклинание игрока — для комбо. */
+  private lastCast: { spell: SpellId; t: number } | null = null;
 
   /** Руны делят один кулдаун. */
   runeReadyAt = 0;
@@ -295,20 +307,53 @@ export class Battle {
       if (grade === 'weak') this.breakCombo();
       else this.combo++;
     }
-    const pierce = spell === 'lightning' ? (staff.lightningPierce ?? def.shieldPierce) : def.shieldPierce;
+    let pierce = spell === 'lightning' ? (staff.lightningPierce ?? def.shieldPierce) : def.shieldPierce;
     const slow = def.slow ? { ...def.slow, ms: def.slow.ms + (staff.slowBonusMs ?? 0) } : undefined;
+
+    // комбо: второе заклинание связки в окне после первого
+    let bonus = 0;
+    let comboBurn = false;
+    const combo = !iceFollowUp
+      ? COMBOS.find((c) => c.then === spell && this.lastCast?.spell === c.first && this.t - this.lastCast.t <= COMBO_WINDOW_MS)
+      : undefined;
+    if (combo) {
+      bonus = combo.bonusDamage;
+      pierce = Math.max(pierce, combo.pierce ?? 0);
+      comboBurn = !!combo.burn;
+      this.emit({ type: 'comboCast', name: combo.name, bonus });
+    }
+    if (!iceFollowUp) this.lastCast = { spell, t: this.t };
+
+    // ветер сдувает вражеские снаряды в полёте, теряя силу за каждый
+    let windMul = 1;
+    if (spell === 'wind') {
+      const blown = this.projectiles.filter((p) => p.to === 'player' && p.spawnT <= this.t);
+      if (blown.length) {
+        this.projectiles = this.projectiles.filter((p) => !blown.includes(p));
+        windMul = Math.max(0.2, 1 - STATUS.windAbsorbLoss * blown.length);
+        this.emit({ type: 'blownAway', count: blown.length });
+      }
+    }
+
+    // лёд гасит своё горение (лечение — в setPlayerHolds)
+    if (spell === 'ice' && this.player.burningUntil > this.t) {
+      this.player.burningUntil = 0;
+      this.emit({ type: 'burn', side: 'player', on: false });
+    }
+
     const projectile = this.spawn({
       spell,
       from: 'player',
       to: 'enemy',
-      damage,
+      damage: Math.round((damage + bonus) * windMul),
       quality,
       spawnT: this.t,
       hitT: this.t + def.travelMs,
       pierce,
-      shieldDamage: def.shieldDamage && Math.round(def.shieldDamage * (0.6 + 0.4 * quality)),
+      shieldDamage: def.shieldDamage && Math.round(def.shieldDamage * (0.6 + 0.4 * quality) * windMul),
       slow,
       interrupt: def.interrupt,
+      burn: spell === 'fireball' || comboBurn,
     });
     this.emit({ type: 'cast', side: 'player', spell, quality, damage, projectile, grade, combo: this.combo });
     return true;
@@ -316,6 +361,10 @@ export class Battle {
 
   /** Каст врага (из BotAI). */
   enemyCast(spell: SpellId) {
+    if (spell === 'ice' && this.enemy.burningUntil > this.t) {
+      this.enemy.burningUntil = 0;
+      this.emit({ type: 'burn', side: 'enemy', on: false });
+    }
     const def = SPELLS[spell];
     const quality = 0.7 + 0.3 * this.rng();
     const charge = spell === 'fireball' ? 0.3 + 0.5 * this.rng() : 1;
@@ -353,6 +402,10 @@ export class Battle {
         p.mana -= cost;
         p.cooldowns.heal = this.t + def.cooldownMs;
         p.healing = { until: this.t + def.heal!.durationMs, perMs: def.heal!.amount / def.heal!.durationMs };
+        if (p.burningUntil > this.t) {
+          p.burningUntil = 0;
+          this.emit({ type: 'burn', side: 'player', on: false });
+        }
         this.healRejected = false;
         this.emit({ type: 'cast', side: 'player', spell: 'heal', quality: 1, damage: 0 });
       } else if (!this.healRejected) {
@@ -392,6 +445,13 @@ export class Battle {
       const f = this.fighter(side);
       const slowed = this.t < f.slowedUntil;
       f.mana = Math.min(f.maxMana, f.mana + COMBAT.manaRegen * s * (slowed ? 1 - f.slowFactor : 1));
+
+      if (f.burningUntil > this.t) {
+        f.hp = Math.max(0, f.hp - STATUS.burnDps * s);
+      } else if (f.burningUntil) {
+        f.burningUntil = 0;
+        this.emit({ type: 'burn', side, on: false });
+      }
 
       if (f.healing) {
         const amount = Math.min(f.healing.perMs * dt, f.maxHp - f.hp);
@@ -477,6 +537,10 @@ export class Battle {
       }
     } else {
       hpDamage = p.damage;
+      if (p.burn) {
+        if (target.burningUntil <= this.t) this.emit({ type: 'burn', side: p.to, on: true });
+        target.burningUntil = this.t + STATUS.burnMs;
+      }
       if (p.slow) {
         target.slowedUntil = this.t + p.slow.ms;
         target.slowFactor = p.slow.factor;
