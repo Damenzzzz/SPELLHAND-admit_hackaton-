@@ -1,4 +1,5 @@
 import { prepare, type Pt, type RuneTemplate } from './pdollar';
+import { localize } from '../../i18n';
 
 export type RuneId = 'meteor' | 'chain' | 'prison' | 'sphere' | 'mend';
 
@@ -64,3 +65,5 @@ export const RUNE_TEMPLATES: RuneTemplate<RuneId>[] = (Object.entries(SHAPES) as
 
 /** Точки эталона для отрисовки подсказки (первый вариант). */
 export const runeShape = (id: RuneId): Pt[] => SHAPES[id][0];
+
+localize(RUNES);

@@ -5,12 +5,16 @@ import { useAssets } from '../../game/preload';
 import { CameraView } from '../../render/CameraView';
 import { useGame } from '../../store/gameStore';
 import { useGesture } from '../../store/gestureStore';
-import { updateSave } from '../../store/saveStore';
+import { updateSave, useSave } from '../../store/saveStore';
+import { shouldOfferTutorial } from '../../game/tutorial';
+import { updateSettings } from '../../store/settingsStore';
 import { getPalmSign, setPalmSign } from '../../vision/features';
 import { useVision } from '../../store/visionStore';
 import { startVision } from '../../vision/handTracker';
 import { AssetImg } from '../AssetImg';
+import { DwellButton } from '../DwellButton';
 import { FpsCounter } from '../FpsCounter';
+import { isEn, tr, tx } from '../../i18n';
 
 const HAND_HOLD_MS = 1000;
 const FPS_MIN = 20;
@@ -95,40 +99,40 @@ export function Calibration() {
       const checks: Check[] = [
         {
           id: 'camera',
-          label: 'Камера разрешена',
+          label: tr('Камера разрешена', 'Camera allowed'),
           state: cameraOk ? 'ok' : cameraFail ? 'fail' : 'pending',
-          hint: cameraFail ? (v.error ?? undefined) : 'Разреши доступ к камере во всплывающем окне',
+          hint: cameraFail ? (v.error ?? undefined) : tr('Разреши доступ к камере во всплывающем окне', 'Allow camera access in the pop-up'),
         },
         {
           id: 'model',
-          label: 'Распознавание рук загружено',
+          label: tr('Распознавание рук загружено', 'Hand tracking loaded'),
           state: running ? 'ok' : v.status === 'error' && cameraOk ? 'fail' : 'pending',
-          hint: v.status === 'error' ? (v.error ?? undefined) : 'Загружаем модель…',
+          hint: v.status === 'error' ? (v.error ?? undefined) : tr('Загружаем модель…', 'Loading the model…'),
         },
         {
           id: 'assets',
-          label: `Ассеты игры ${Math.round((assets.loaded / assets.total) * 100)}%`,
+          label: `${tr('Ассеты игры', 'Game assets')} ${Math.round((assets.loaded / assets.total) * 100)}%`,
           state: assets.loaded >= assets.total ? 'ok' : 'pending',
-          hint: 'Загружаем арены, врагов и посохи…',
+          hint: tr('Загружаем арены, врагов и посохи…', 'Loading arenas, enemies and staffs…'),
           progress: assets.loaded / assets.total,
         },
         {
           id: 'hand',
-          label: 'Открытая ладонь в кадре',
+          label: tr('Открытая ладонь в кадре', 'Open palm in frame'),
           state: !running ? 'pending' : handHeld ? 'ok' : 'pending',
-          hint: 'Подними открытую ладонь к камере, пальцы выпрямлены',
+          hint: tr('Подними открытую ладонь к камере, пальцы выпрямлены', 'Raise an open palm to the camera, fingers straight'),
         },
         {
           id: 'fps',
-          label: `Скорость ≥ ${FPS_MIN} FPS`,
+          label: `${tr('Скорость', 'Speed')} ≥ ${FPS_MIN} FPS`,
           state: !fpsSettled ? 'pending' : Math.round(v.fps) >= FPS_MIN ? 'ok' : 'warn',
-          hint: `Сейчас ${Math.round(v.fps)} FPS — закрой лишние вкладки и приложения`,
+          hint: tr(`Сейчас ${Math.round(v.fps)} FPS — закрой лишние вкладки и приложения`, `Now ${Math.round(v.fps)} FPS — close extra tabs and apps`),
         },
         {
           id: 'light',
-          label: 'Освещение',
+          label: tr('Освещение', 'Lighting'),
           state: !running ? 'pending' : v.brightness >= BRIGHTNESS_MIN ? 'ok' : 'warn',
-          hint: 'Мало света — повернись к окну или лампе',
+          hint: tx('Мало света — повернись к окну или лампе'),
         },
       ];
 
@@ -139,7 +143,8 @@ export function Calibration() {
       const readyProgress = readySince ? Math.min(1, (now - readySince) / READY_HOLD_MS) : 0;
 
       setSnap({ checks, readyProgress });
-      if (readyProgress >= 1) go('menu');
+      // новому игроку — вводный учебный бой; вернувшимся и уже прошедшим/пропустившим — меню
+      if (readyProgress >= 1) go(shouldOfferTutorial(useSave.getState()) ? 'tutorial' : 'menu');
     }, POLL_MS);
 
     return () => clearInterval(id);
@@ -155,7 +160,10 @@ export function Calibration() {
 
       <aside className="calibration-panel">
         <AssetImg src={ASSETS.logo} fallback="SPELLHAND" className="logo-img logo-sm" alt="SPELLHAND" />
-        <h2>Калибровка</h2>
+        <h2>{tr('Калибровка', 'Calibration')}</h2>
+        <DwellButton allowPointer className="lang-toggle-inline" onSelect={() => updateSettings({ lang: isEn() ? 'ru' : 'en' })}>
+          🌐 {isEn() ? 'Русский' : 'English'}
+        </DwellButton>
         <ul className="checklist">
           {snap.checks.map((c) => (
             <li key={c.id} className={`check check-${c.state}`}>
@@ -175,7 +183,7 @@ export function Calibration() {
         {snap.readyProgress > 0 && (
           <div className="ready">
             <div className="ready-bar" style={{ transform: `scaleX(${snap.readyProgress})` }} />
-            <span>Готово! Начинаем…</span>
+            <span>{tr('Готово! Начинаем…', 'Ready! Starting…')}</span>
           </div>
         )}
 

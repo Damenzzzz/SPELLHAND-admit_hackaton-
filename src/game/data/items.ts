@@ -1,4 +1,5 @@
 import type { SpellId } from '../../gestures/types';
+import { localize } from '../../i18n';
 
 export interface StaffDef {
   id: string;
@@ -53,3 +54,5 @@ export const SHIELDS: ShieldDef[] = [
 export const ITEM_BY_ID: Record<string, ItemDef> = Object.fromEntries(
   [...STAFFS, ...SHIELDS].map((i) => [i.id, i]),
 );
+
+localize([STAFFS, SHIELDS]);

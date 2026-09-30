@@ -3,6 +3,7 @@ import { TEMPLATE_BY_ID } from '../gestures/templates';
 import { useGesture } from '../store/gestureStore';
 import { FAIL_BADGE } from './failCategories';
 import { SpellIcon } from './SpellIcon';
+import { tr } from '../i18n';
 
 /**
  * Режим «ошибка» в реальном времени: конкретная подсказка + призрачная рука-шаблон
@@ -30,7 +31,7 @@ export function HintCard({ compact = false }: { compact?: boolean }) {
       <div>
         {tpl && (
           <div className="hint-title">
-            <SpellIcon id={tpl.id} className="icon-inline" /> {hint.kind === 'motion' ? `Осечка: ${tpl.name}` : `Почти ${tpl.name}!`}
+            <SpellIcon id={tpl.id} className="icon-inline" /> {hint.kind === 'motion' ? tr(`Осечка: ${tpl.name}`, `Misfire: ${tpl.name}`) : tr(`Почти ${tpl.name}!`, `Almost ${tpl.name}!`)}
           </div>
         )}
         {hint.lines.map((l) => (

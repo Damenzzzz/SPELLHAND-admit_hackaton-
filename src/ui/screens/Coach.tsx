@@ -23,6 +23,7 @@ import { HandHeatmap } from '../HandHeatmap';
 import { HintCard } from '../HintCard';
 import { ScreenShell } from '../ScreenShell';
 import { SpellIcon } from '../SpellIcon';
+import { tr } from '../../i18n';
 
 const DRILL_MS = 30000;
 const HOLD_SUCCESS_MS = 800;
@@ -37,6 +38,9 @@ function errorText(id: string): string {
   return id;
 }
 
+/** Стабильная ссылка: новый [] в селекторе zustand зацикливает рендер, пока истории нет. */
+const NO_HISTORY: NonNullable<ReturnType<typeof useSave.getState>['history']> = [];
+
 /** «Тренер»: прогресс между сессиями, тепловая карта пальцев и упражнение на слабое место. */
 export function Coach() {
   const [drill, setDrill] = useState<{ gesture: GestureId; constraint: string } | null>(null);
@@ -45,7 +49,7 @@ export function Coach() {
 
 function Overview({ onDrill }: { onDrill: (d: { gesture: GestureId; constraint: string }) => void }) {
   const go = useGame((s) => s.go);
-  const history = useSave((s) => s.history ?? []);
+  const history = useSave((s) => s.history ?? NO_HISTORY);
   const trend = accuracyTrend(history);
   const top = topErrorIds(history).slice(0, 3);
   const weakest = top.find((e) => gestureOfConstraint(e.id));
@@ -59,18 +63,18 @@ function Overview({ onDrill }: { onDrill: (d: { gesture: GestureId; constraint: 
 
   return (
     <ScreenShell className="coach">
-      <h2 className="screen-title">📈 Тренер</h2>
+      <h2 className="screen-title">📈 {tr('Тренер', 'Coach')}</h2>
       <div className="results-grid">
         <section className="card">
-          <h3>Точность по сессиям</h3>
+          <h3>{tr('Точность по сессиям', 'Accuracy by session')}</h3>
           {trend && (
             <p className="trend">
-              было <b>{Math.round(trend.before * 100)}%</b> → стало{' '}
+              {tr('было', 'was')} <b>{Math.round(trend.before * 100)}%</b> → {tr('стало', 'now')}{' '}
               <b className={trend.after >= trend.before ? 'up' : 'down'}>{Math.round(trend.after * 100)}%</b>
             </p>
           )}
           <AccuracyChart history={history} />
-          <h3>Качество жестов</h3>
+          <h3>{tr('Качество жестов', 'Gesture quality')}</h3>
           <div className="quality-list">
             {perGesture
               .filter((g) => g.n)
@@ -88,9 +92,9 @@ function Overview({ onDrill }: { onDrill: (d: { gesture: GestureId; constraint: 
           </div>
         </section>
         <section className="card coach-right">
-          <h3>Какие пальцы подводят</h3>
+          <h3>{tr('Какие пальцы подводят', 'Which fingers fail')}</h3>
           <HandHeatmap errors={fingerErrors(history)} />
-          <h3>Частые ошибки</h3>
+          <h3>{tr('Частые ошибки', 'Common errors')}</h3>
           {top.length ? (
             <ol className="error-list">
               {top.map((e) => (
@@ -101,7 +105,7 @@ function Overview({ onDrill }: { onDrill: (d: { gesture: GestureId; constraint: 
               ))}
             </ol>
           ) : (
-            <p className="muted">Ошибок пока нет — сыграй бой или разминку.</p>
+            <p className="muted">{tr('Ошибок пока нет — сыграй бой или разминку.', 'No errors yet — play a battle or a warm-up.')}</p>
           )}
         </section>
       </div>
@@ -111,10 +115,10 @@ function Overview({ onDrill }: { onDrill: (d: { gesture: GestureId; constraint: 
             className="btn-primary"
             onSelect={() => onDrill({ gesture: gestureOfConstraint(weakest.id)!, constraint: weakest.id })}
           >
-            🎯 Упражнение: {errorText(weakest.id).toLowerCase()}
+            🎯 {tr('Упражнение', 'Drill')}: {errorText(weakest.id).toLowerCase()}
           </DwellButton>
         )}
-        <DwellButton onSelect={() => go('menu')}>← В меню</DwellButton>
+        <DwellButton onSelect={() => go('menu')}>← {tr('В меню', 'Menu')}</DwellButton>
       </nav>
     </ScreenShell>
   );
@@ -133,7 +137,7 @@ function Drill({ gesture, constraint, onDone }: { gesture: GestureId; constraint
   const [done, setDone] = useState(false);
   const [, tick] = useState(0);
   const counted = useRef(0);
-  const history = useSave((s) => s.history ?? []);
+  const history = useSave((s) => s.history ?? NO_HISTORY);
   const before = history.slice(-10).reduce((a, s) => a + (s.errors[constraint] ?? 0), 0);
 
   useEffect(() => {
@@ -200,10 +204,10 @@ function Drill({ gesture, constraint, onDone }: { gesture: GestureId; constraint
       </CameraView>
       <aside className="side-panel academy-panel">
         <h2 className="screen-title title-with-icon">
-          <SpellIcon id={gesture} /> Упражнение
+          <SpellIcon id={gesture} /> {tr('Упражнение', 'Drill')}
         </h2>
         <p className="pose-text">
-          Делай «{tpl.name}» снова и снова. Следи: <b>{errorText(constraint).toLowerCase()}</b>
+          {tr(`Делай «${tpl.name}» снова и снова. Следи:`, `Do “${tpl.name}” again and again. Watch out:`)} <b>{errorText(constraint).toLowerCase()}</b>
         </p>
         <GhostHand gesture={gesture} size={150} />
         {live && (
@@ -215,28 +219,30 @@ function Drill({ gesture, constraint, onDone }: { gesture: GestureId; constraint
         <div className="stat-row">
           <div className="stat">
             <b>{hits}</b>
-            <span>удачных</span>
+            <span>{tr('удачных', 'successful')}</span>
           </div>
           <div className="stat">
             <b>{misses}</b>
-            <span>срывов по этой ошибке</span>
+            <span>{tr('срывов по этой ошибке', 'slips on this error')}</span>
           </div>
           <div className="stat">
-            <b>{Math.ceil(left / 1000)} с</b>
-            <span>осталось</span>
+            <b>
+              {Math.ceil(left / 1000)} {tr('с', 's')}
+            </b>
+            <span>{tr('осталось', 'left')}</span>
           </div>
         </div>
         {done && (
           <>
             <p className="found">
-              Готово: {hits} удачных, {misses} срывов
-              {before > 0 ? ` (за последние бои эта ошибка была ${before} раз)` : ''}.
+              {tr(`Готово: ${hits} удачных, ${misses} срывов`, `Done: ${hits} successful, ${misses} slips`)}
+              {before > 0 ? tr(` (за последние бои эта ошибка была ${before} раз)`, ` (this error happened ${before} times in recent battles)`) : ''}.
             </p>
             <p className="muted">{adviceFor(constraint)}</p>
           </>
         )}
         <div className="panel-buttons">
-          <DwellButton onSelect={onDone}>← К тренеру</DwellButton>
+          <DwellButton onSelect={onDone}>← {tr('К тренеру', 'Back to coach')}</DwellButton>
         </div>
       </aside>
     </div>

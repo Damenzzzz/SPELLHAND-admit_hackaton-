@@ -1,0 +1,7 @@
+1ver
+node_modules
+dist
+.env
+.env.*
+*.tsbuildinfo
+scripts/.cache

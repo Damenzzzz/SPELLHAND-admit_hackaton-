@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<title>Проверка приватной дуэли</title>
+<style>
+  body { font: 18px system-ui; margin: 32px; background: #0b1026; color: #e8ecff; }
+  pre { white-space: pre-wrap; }
+  iframe { width: 45%; height: 340px; border: 1px solid #5fa8ff; border-radius: 12px; }
+</style>
+<h1>Проверка приватной дуэли</h1>
+<pre id="status">Подготовка…</pre>
+<script type="module">
+  // Manual integration check: two independent browser realms, real Nostr/WebRTC,
+  // no camera, save mutations or leaderboard submissions. Open through Vite.
+  import { openPrivateRoom } from '../src/net/privateRoom.ts';
+  import { createRoomCode } from '../src/net/roomCode.ts';
+  import { PvpLink } from '../src/net/pvp.ts';
+
+  const params = new URLSearchParams(location.search);
+  const role = params.get('role');
+  const status = document.querySelector('#status');
+  const report = (text) => { status.textContent = text; };
+  let request, link, timer;
+  addEventListener('pagehide', () => { request?.cancel(); link?.close(); clearTimeout(timer); });
+
+  if (!role) {
+    const code = createRoomCode();
+    const received = new Set();
+    const frames = [];
+    report(`Код тестовой комнаты: ${code}. Ожидаем оба подключения…`);
+    for (const name of ['host', 'guest']) {
+      const frame = document.createElement('iframe');
+      frame.title = name === 'host' ? 'Создатель' : 'Гость';
+      frame.src = `?role=${name}&code=${code}`;
+      frames.push(frame);
+      document.body.append(frame);
+    }
+    addEventListener('message', (event) => {
+      if (event.origin !== location.origin || !frames.some((frame) => frame.contentWindow === event.source)) return;
+      if (event.data?.kind === 'passed') received.add(event.data.role);
+      if (received.size === 2) report('УСПЕХ: два игрока соединились по коду, согласовали старт и обменялись заклинаниями.');
+    });
+  } else {
+    const code = params.get('code');
+    report(`${role}: подключаемся к комнате ${code}…`);
+    try {
+      request = openPrivateRoom(role, code, `Тест ${role}`);
+      const result = await request.promise;
+      if (result.kind !== 'matched') throw new Error(`Подбор: ${result.kind}`);
+      report(`${role}: пара найдена, готовим PvP…`);
+      link = new PvpLink(result.match);
+      // старый формат каста + «Паровой взрыв» с новыми полями и ответом fx
+      let gotCast = false;
+      let gotFx = false;
+      const check = () => {
+        if (!gotCast || !gotFx) return;
+        report(`${role}: УСПЕХ — получено заклинание и подтверждение комбинации от второго игрока.`);
+        parent.postMessage({ kind: 'passed', role }, location.origin);
+      };
+      link.onCast = (cast) => {
+        if (cast.spell === 'ice' && cast.damage === 6 && !cast.combo) gotCast = true;
+        if (cast.combo === 'steam' && cast.cid === 42 && cast.steam?.bonusDamage === 18) link.sendFx({ cid: 42, ok: true });
+        check();
+      };
+      link.onFx = (fx) => {
+        if (fx.cid === 42 && fx.ok) gotFx = true;
+        check();
+      };
+      const startAt = await link.started;
+      if (startAt === null) throw new Error('Тайм-аут PvP');
+      report(`${role}: общий старт ${startAt}, отправляем заклинание…`);
+      timer = setTimeout(() => {
+        link.sendCast({
+          spell: 'ice', damage: 6, quality: 1, pierce: 0, shieldDamage: null,
+          slowFactor: null, slowMs: null, interrupt: false, travelMs: 500,
+        });
+        link.sendCast({
+          spell: 'ice', damage: 6, quality: 1, pierce: 0, shieldDamage: null, slowFactor: null, slowMs: null,
+          interrupt: false, travelMs: 500, cid: 42, burn: false, combo: 'steam', steam: { bonusDamage: 18, stunMs: 1200 },
+        });
+      }, Math.max(0, startAt - Date.now()));
+    } catch (error) {
+      report(`${role}: ОШИБКА — ${error.message}`);
+      request?.cancel(); link?.close();
+    }
+  }
+</script>
+</html>

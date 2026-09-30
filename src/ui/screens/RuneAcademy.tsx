@@ -6,6 +6,7 @@ import { CameraView } from '../../render/CameraView';
 import { useGame } from '../../store/gameStore';
 import { useGesture } from '../../store/gestureStore';
 import { DwellButton } from '../DwellButton';
+import { tr } from '../../i18n';
 
 /** Превью руны: эталонная фигура как SVG-линия со стрелкой начала. */
 export function RuneGlyph({ id, size = 64 }: { id: RuneId; size?: number }) {
@@ -59,13 +60,16 @@ export function RuneAcademy() {
   return (
     <div className="split-screen">
       <CameraView className="split-camera">
-        {penDown && <div className="toast">✍️ Рисуешь руну…</div>}
+        {penDown && <div className="toast">✍️ {tr('Рисуешь руну…', 'Drawing a rune…')}</div>}
       </CameraView>
       <aside className="side-panel academy-panel">
-        <h2 className="screen-title">✍️ Руны</h2>
+        <h2 className="screen-title">✍️ {tr('Руны', 'Runes')}</h2>
         <p className="pose-text">
-          Сведи <b>большой и указательный</b>, как будто держишь перо (👌, остальные пальцы выпрямлены), и нарисуй
-          фигуру в воздухе крупно и одним движением. Разведи пальцы — руна сработает.
+          {tr('Сведи', 'Pinch your')} <b>{tr('большой и указательный', 'thumb and index')}</b>
+          {tr(
+            ', как будто держишь перо (👌, остальные пальцы выпрямлены), и нарисуй фигуру в воздухе крупно и одним движением. Разведи пальцы — руна сработает.',
+            ' as if holding a quill (👌, other fingers straight) and draw the shape in the air, large and in one stroke. Open your fingers — the rune fires.',
+          )}
         </p>
         <div className="rune-grid">
           {(Object.keys(RUNES) as RuneId[]).map((id) => (
@@ -80,13 +84,13 @@ export function RuneAcademy() {
         {last && (
           <div className={`calibration-hint ${last.ok ? '' : 'hint-fail'}`}>
             {last.ok
-              ? `✓ ${RUNES[last.rune].name} — точность росчерка ${Math.round(last.score * 100)}%`
+              ? `✓ ${RUNES[last.rune].name} — ${tr('точность росчерка', 'stroke accuracy')} ${Math.round(last.score * 100)}%`
               : `✗ ${last.reason}`}
           </div>
         )}
-        <p className="muted">В бою руны стоят 60 маны и делят кулдаун 12 с.</p>
+        <p className="muted">{tr('В бою руны стоят 60 маны и делят кулдаун 12 с.', 'In battle runes cost 60 mana and share a 12 s cooldown.')}</p>
         <div className="panel-buttons">
-          <DwellButton onSelect={() => openAcademy(null)}>← В академию</DwellButton>
+          <DwellButton onSelect={() => openAcademy(null)}>← {tr('В академию', 'Academy')}</DwellButton>
         </div>
       </aside>
     </div>

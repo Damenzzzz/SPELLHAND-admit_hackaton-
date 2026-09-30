@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react';
 import { video } from '../vision/handTracker';
 import { HandOverlay } from './HandOverlay';
+import { useSettings } from '../store/settingsStore';
 
 // three.js грузится отдельным чанком только там, где нужен посох
 const StaffAttachment = lazy(() => import('./StaffAttachment'));
@@ -15,6 +16,7 @@ interface Props {
 
 /** Зеркальное видео с камеры и скелет рук поверх. */
 export function CameraView({ className, children, staff }: Props) {
+  const { showStaff } = useSettings();
   const mirrorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function CameraView({ className, children, staff }: Props) {
     <div className={`camera-view ${className ?? ''}`}>
       <div ref={mirrorRef} className="camera-mirror">
         <HandOverlay />
-        {staff && (
+        {staff && showStaff && (
           <Suspense fallback={null}>
             <StaffAttachment />
           </Suspense>

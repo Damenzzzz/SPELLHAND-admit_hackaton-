@@ -1,4 +1,5 @@
 import { useVision } from '../store/visionStore';
+import { tr } from '../i18n';
 
 export function FpsCounter() {
   const fps = useVision((s) => Math.round(s.fps));
@@ -9,7 +10,7 @@ export function FpsCounter() {
 
   return (
     <div className={`fps-counter fps-${level}`}>
-      <b>{fps}</b> FPS · рук: {hands}
+      <b>{fps}</b> FPS · {tr('рук', 'hands')}: {hands}
       {delegate && (
         <span className="fps-delegate">
           {' '}

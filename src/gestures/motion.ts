@@ -33,10 +33,17 @@ export class MotionTrack {
     return this.buf[this.buf.length - 1];
   }
 
-  /** Самый ранний сэмпл не старше windowMs. */
+  /**
+   * Самый ранний сэмпл не старше windowMs. Если в окне только текущий (провал кадров) —
+   * предыдущий, когда он не старше maxSampleGapMs: иначе скорость = 0 и быстрый взмах теряется.
+   */
   private since(windowMs: number): Sample | undefined {
-    const now = this.last()?.t ?? 0;
-    return this.buf.find((s) => now - s.t <= windowMs);
+    const last = this.last();
+    if (!last) return undefined;
+    const first = this.buf.find((s) => last.t - s.t <= windowMs);
+    if (first !== last || this.buf.length < 2) return first;
+    const prev = this.buf[this.buf.length - 2];
+    return last.t - prev.t <= C.maxSampleGapMs ? prev : first;
   }
 
   private avgPalm() {

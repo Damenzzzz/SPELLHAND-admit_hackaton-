@@ -1,11 +1,33 @@
+# dependencies & build output
 node_modules
 dist
-.vercel
-.env*
-.DS_Store
-*.log
-# wasm копируется из node_modules postinstall-скриптом (scripts/copy-mediapipe.mjs);
-# модель hand_landmarker.task закоммичена — установка не зависит от googleapis
-public/mediapipe/wasm/
 *.tsbuildinfo
+
+# secrets / env
+.env
+.env.*
+!.env.example
+
+# vercel
+.vercel
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+*.swp
+
+# logs & caches
+*.log
+npm-debug.log*
+.cache
+coverage
 scripts/.cache/
+
+# wasm копируется из node_modules postinstall-скриптом (scripts/copy-mediapipe.mjs);
+# модели *.task закоммичены — установка не зависит от googleapis
+public/mediapipe/wasm/
+
+# старая версия проекта (локальная копия, не для сдачи)
+1ver/

@@ -3,6 +3,7 @@ import type { GestureId } from '../gestures/types';
 import type { SessionRecord } from '../game/progress';
 import type { PersonalModel } from '../gestures/personal';
 import { randomNick } from '../net/nick';
+import type { GameSettings } from '../game/settings';
 
 const KEY = 'spellhand.save.v1';
 
@@ -10,9 +11,30 @@ export interface LevelRecord {
   wins: number;
   bestAccuracy: number;
   bestTimeMs: number;
+  /** Лучшие звёзды за один бой (0–3). Нет в старых сохранениях. */
+  stars?: number;
 }
 
+/** Счётчики боевых приёмов для достижений. */
+export interface Feats {
+  combos: number;
+  parries: number;
+  /** Руны, хоть раз сработавшие в бою. */
+  runes: string[];
+  /** Победы в кампании без поднятого щита. */
+  noShieldWins: number;
+  /** Больше всего мутаторов в одной победе. */
+  maxMutatorsWin: number;
+  /** Дни (YYYY-MM-DD), когда сыграно испытание дня. */
+  dailyDays: string[];
+}
+
+export const EMPTY_FEATS: Feats = { combos: 0, parries: 0, runes: [], noShieldWins: 0, maxMutatorsWin: 0, dailyDays: [] };
+
 export interface SaveData {
+  settings?: Partial<GameSettings>;
+  /** Полученные достижения: id → время получения. Старые сохранения поддерживаются. */
+  achievements?: Record<string, number>;
   coins: number;
   /** Максимальный открытый уровень (1..10). */
   unlocked: number;
@@ -31,10 +53,18 @@ export interface SaveData {
   personal?: PersonalModel;
   /** История сессий для «Тренера». */
   history?: SessionRecord[];
+  /** Приёмы для достижений. */
+  feats?: Feats;
+  /** Рекорд башни выживания: пройдено волн. */
+  survivalBest?: number;
+  /** Вводный учебный бой: пройден или пропущен (нет в старых сохранениях — решает прогресс игрока). */
+  tutorial?: { status: 'completed' | 'skipped'; at: number };
   /** Рекорд разминки. */
   rushBest?: number;
   /** Лучший результат испытания дня. */
   dailyBest?: { id: string; score: number };
+  /** День (YYYY-MM-DD), за который уже выплачена полная награда испытания дня. */
+  dailyRewardedOn?: string;
   /** Фоновая музыка. */
   musicOn?: boolean;
   /** Жесты всем телом (Pose Landmarker). По умолчанию выключены (Академия → «Тело»). */

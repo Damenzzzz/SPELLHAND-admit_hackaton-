@@ -5,8 +5,10 @@ export interface MatchFound {
   roomId: string;
   opponentId: string;
   opponentNick: string;
-  /** Инициатор матча (меньший id) — он назначает время старта. */
+  /** Инициатор матча назначает время старта; в приватной комнате это создатель. */
   initiator: boolean;
+  /** Общий секрет для дуэли по коду; в публичном подборе не нужен. */
+  password?: string;
 }
 
 export interface LobbyStatus {

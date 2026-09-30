@@ -8,6 +8,7 @@ import { poseEvents, usePose } from '../store/poseStore';
 import { useSave } from '../store/saveStore';
 import { devHands } from './devFeed';
 import { recordFrame } from './recorder';
+import { tr } from '../i18n';
 
 const BASE = import.meta.env.BASE_URL;
 const WASM_PATH = `${BASE}mediapipe/wasm`;
@@ -46,7 +47,7 @@ export async function setPoseEnabled(on: boolean) {
   if (!detectorRef) return;
   const ok = await detectorRef.enablePose();
   poseTracker.reset();
-  usePose.setState({ active: ok && poseWanted, notice: ok ? null : 'Модель позы не загрузилась' });
+  usePose.setState({ active: ok && poseWanted, notice: ok ? null : tr('Модель позы не загрузилась', 'Pose model failed to load') });
 }
 
 /** Воркер, а при сбое — главный поток (dev, Safari/iOS, старые браузеры). */
@@ -134,7 +135,7 @@ function runLoop(detector: Detector) {
         if (usePose.getState().active && patch.fps < POSE_MIN_FPS) {
           lowFpsSince ||= now;
           if (now - lowFpsSince > POSE_LOW_FPS_MS) {
-            usePose.setState({ active: false, notice: 'Жесты телом выключены: не хватает FPS' });
+            usePose.setState({ active: false, notice: tr('Жесты телом выключены: не хватает FPS', 'Body gestures disabled: FPS too low') });
             lowFpsSince = 0;
           }
         } else lowFpsSince = 0;
@@ -184,7 +185,7 @@ export async function startVision(): Promise<void> {
     const message =
       err instanceof CameraError
         ? err.message
-        : 'Не удалось загрузить модель распознавания рук. Проверь интернет и обнови страницу.';
+        : tr('Не удалось загрузить модель распознавания рук. Проверь интернет и обнови страницу.', 'Could not load the hand tracking model. Check your connection and reload the page.');
     console.error('[vision]', err);
     set({ status: 'error', error: message });
   }

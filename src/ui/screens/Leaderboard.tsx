@@ -5,6 +5,7 @@ import { useSave } from '../../store/saveStore';
 import { CoinBadge } from '../CoinBadge';
 import { DwellButton } from '../DwellButton';
 import { ScreenShell } from '../ScreenShell';
+import { tr } from '../../i18n';
 
 type State = { kind: 'loading' } | { kind: 'ok'; rows: LeaderRow[] } | { kind: 'error' };
 
@@ -33,22 +34,22 @@ export function Leaderboard() {
   return (
     <ScreenShell className="leaderboard">
       <CoinBadge />
-      <h2 className="screen-title">🏆 Лидерборд</h2>
+      <h2 className="screen-title">🏆 {tr('Лидерборд', 'Leaderboard')}</h2>
       <div className="results-grid">
         <section className="card">
-          <h3>Топ-20 магов</h3>
-          {state.kind === 'loading' && <p className="muted">Загружаем с релеев…</p>}
-          {state.kind === 'error' && <p className="muted">Нет связи с релеями — попробуй позже.</p>}
-          {state.kind === 'ok' && !state.rows.length && <p className="muted">Пока пусто — стань первым!</p>}
+          <h3>{tr('Топ-20 магов', 'Top 20 mages')}</h3>
+          {state.kind === 'loading' && <p className="muted">{tr('Загружаем с релеев…', 'Loading from relays…')}</p>}
+          {state.kind === 'error' && <p className="muted">{tr('Нет связи с релеями — попробуй позже.', 'Cannot reach the relays — try again later.')}</p>}
+          {state.kind === 'ok' && !state.rows.length && <p className="muted">{tr('Пока пусто — стань первым!', 'Empty so far — be the first!')}</p>}
           {state.kind === 'ok' && state.rows.length > 0 && (
             <table className="lb-table">
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Маг</th>
-                  <th>Победы</th>
-                  <th>Точность</th>
-                  <th>Уровень</th>
+                  <th>{tr('Маг', 'Mage')}</th>
+                  <th>{tr('Победы', 'Wins')}</th>
+                  <th>{tr('Точность', 'Accuracy')}</th>
+                  <th>{tr('Уровень', 'Level')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -69,30 +70,32 @@ export function Leaderboard() {
           )}
         </section>
         <section className="card">
-          <h3>Мои рекорды · {nickname}</h3>
+          <h3>
+            {tr('Мои рекорды', 'My records')} · {nickname}
+          </h3>
           <div className="stat-row">
             <div className="stat">
               <b>{localWins}</b>
-              <span>побед в кампании</span>
+              <span>{tr('побед в кампании', 'campaign wins')}</span>
             </div>
             <div className="stat">
               <b>{Math.round(bestAcc * 100)}%</b>
-              <span>лучшая точность</span>
+              <span>{tr('лучшая точность', 'best accuracy')}</span>
             </div>
             <div className="stat">
               <b>{online.wins}</b>
-              <span>онлайн-побед</span>
+              <span>{tr('онлайн-побед', 'online wins')}</span>
             </div>
             <div className="stat">
               <b>{Object.keys(records).length}/10</b>
-              <span>уровней пройдено</span>
+              <span>{tr('уровней пройдено', 'levels cleared')}</span>
             </div>
           </div>
         </section>
       </div>
       <nav className="results-buttons">
-        <DwellButton onSelect={() => setReload((n) => n + 1)}>🔄 Обновить</DwellButton>
-        <DwellButton onSelect={() => go('menu')}>← В меню</DwellButton>
+        <DwellButton onSelect={() => setReload((n) => n + 1)}>🔄 {tr('Обновить', 'Refresh')}</DwellButton>
+        <DwellButton onSelect={() => go('menu')}>← {tr('В меню', 'Menu')}</DwellButton>
       </nav>
     </ScreenShell>
   );

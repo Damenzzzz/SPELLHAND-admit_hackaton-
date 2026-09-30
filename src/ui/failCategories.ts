@@ -1,5 +1,6 @@
 import type { RejectKind } from '../game/combat';
 import type { FailCategory } from '../gestures/matcher';
+import { localize } from '../i18n';
 
 /** Единая таксономия причин провала: игрок сразу видит, что не так — рука, кадр или заклинание. */
 export const FAIL_BADGE: Record<FailCategory | RejectKind, { icon: string; label: string; color: string }> = {
@@ -10,4 +11,8 @@ export const FAIL_BADGE: Record<FailCategory | RejectKind, { icon: string; label
   cooldown: { icon: '⏳', label: 'Перезарядка', color: '#8fb8ff' },
   mana: { icon: '💧', label: 'Мана', color: '#5fa8ff' },
   interrupted: { icon: '🌪️', label: 'Сбит', color: '#b6f5d8' },
+  banned: { icon: '🚫', label: 'Запрещено', color: '#8b93b8' },
+  stunned: { icon: '💫', label: 'Оглушение', color: '#c9a8ff' },
 };
+
+localize(FAIL_BADGE);

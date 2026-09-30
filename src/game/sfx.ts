@@ -1,4 +1,5 @@
 import type { SpellId } from '../gestures/types';
+import { getSettings } from '../store/settingsStore';
 
 /**
  * Процедурные звуки на Web Audio — без аудиофайлов и лицензий.
@@ -13,7 +14,7 @@ function ac(): AudioContext | null {
     try {
       ctx = new AudioContext();
       master = ctx.createGain();
-      master.gain.value = 0.5;
+      master.gain.value = getSettings().sfxVolume / 100;
       master.connect(ctx.destination);
       noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const d = noise.getChannelData(0);
@@ -27,6 +28,11 @@ function ac(): AudioContext | null {
 
 export function audioReady() {
   return ctx?.state === 'running';
+}
+
+/** Apply the slider to sounds already playing as well as future casts. */
+export function applySfxVolume() {
+  if (master && ctx) master.gain.setTargetAtTime(getSettings().sfxVolume / 100, ctx.currentTime, 0.015);
 }
 
 export function unlockAudio() {

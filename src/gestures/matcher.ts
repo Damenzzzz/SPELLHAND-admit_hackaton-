@@ -8,6 +8,7 @@ import { RuneTracker, type RuneEvent } from './runes/tracker';
 import { MotionTrack } from './motion';
 import { TEMPLATES, TEMPLATE_BY_ID } from './templates';
 import type { ConstraintResult, GestureId, GestureTemplate, TemplateScore } from './types';
+import { localize, tx } from '../i18n';
 
 export interface Hint {
   kind: 'context' | 'pose' | 'motion';
@@ -79,6 +80,7 @@ const CONTEXT = {
   tooFar: 'Подойди ближе к камере',
   lowLight: 'Мало света — повернись к окну или лампе',
 };
+localize(CONTEXT);
 
 function evalTemplate(tpl: GestureTemplate, hands: HandFeatures[]): TemplateScore {
   const run = (
@@ -107,7 +109,16 @@ function evalTemplate(tpl: GestureTemplate, hands: HandFeatures[]): TemplateScor
   }
 
   if (tpl.hands === 2) {
-    return { id: tpl.id, handIdx: 0, ...run(hands[0], hands[1] ?? null) };
+    if (hands.length < 2) return { id: tpl.id, handIdx: 0, ...run(hands[0], null) };
+    // MediaPipe не гарантирует порядок рук: оцениваем оба порядка, чтобы оценка, намерение и
+    // таймер подсказки не мигали от кадра к кадру. При равенстве «эта» рука — менее раскрытая:
+    // подсветка пальцев и подсказка указывают на ту, которую надо исправить.
+    const a = run(hands[0], hands[1]);
+    const b = run(hands[1], hands[0]);
+    const open = (h: HandFeatures) => h.extension.index + h.extension.middle + h.extension.ring + h.extension.pinky;
+    const pickB = Math.abs(a.score - b.score) < 1e-9 ? open(hands[1]) < open(hands[0]) : b.score > a.score;
+    const r = pickB ? b : a;
+    return { id: tpl.id, handIdx: pickB ? 1 : 0, ...r, intent: a.intent || b.intent };
   }
 
   let best: TemplateScore | null = null;
@@ -145,10 +156,12 @@ export class GestureEngine {
   // стабилизация
   private candidate: GestureId | null = null;
   private stable = 0;
+  private candidateSince = 0;
   private active: GestureId | null = null;
   private activeSince = 0;
   private activeKey = '';
   private lowFrames = 0;
+  private lowSince = 0;
   private quality = 0;
   private locks = new Map<GestureId, number>();
 
@@ -177,6 +190,27 @@ export class GestureEngine {
 
   private emit(e: GestureEvent) {
     this.listeners.forEach((fn) => fn(e));
+  }
+
+  /** Discard a partial spell/rune on resume, while preserving hand tracking for menu input. */
+  resetIntent() {
+    this.tracks.clear();
+    this.runes = new RuneTracker();
+    this.lastScores = null;
+    this.candidate = null;
+    this.stable = 0;
+    this.deactivate(0, false);
+    this.activeSince = 0;
+    this.activeKey = '';
+    this.quality = 0;
+    this.locks.clear();
+    this.shards = 0;
+    this.lastFlick = -Infinity;
+    this.weak = null;
+    this.motionHint = null;
+    this.lastMisfire = -Infinity;
+    this.nm = null;
+    this.setDevHold(null);
   }
 
   /** dev-режим: держать позу с клавиатуры. */
@@ -242,6 +276,13 @@ export class GestureEngine {
 
     const activeIdx = this.active ? keys.indexOf(this.activeKey) : -1;
     const debug = this.detectMotion(keys, now);
+    // рук нет — важнее «покажи руку»: незавершённое слабое движение не превращается в осечку
+    // «махни резче», а старая подсказка о движении не всплывёт, когда рука вернётся.
+    // Каст «рука ушла посреди взмаха» уже обработан в detectMotion выше.
+    if (!tracked.length) {
+      this.weak = null;
+      this.motionHint = null;
+    }
 
     const charge =
       this.active === 'fireball'
@@ -297,7 +338,7 @@ export class GestureEngine {
         kind: 'motion',
         category: 'motion',
         gesture: 'fireball',
-        lines: ['Перезаряд! Толкай шар, пока он не раскалился'],
+        lines: [tx('Перезаряд! Толкай шар, пока он не раскалился')],
         fingers: [],
         handIdx: -1,
         key: `overcharge:${now}`,
@@ -320,23 +361,39 @@ export class GestureEngine {
       else {
         this.candidate = best.id;
         this.stable = 1;
+        this.candidateSince = now;
       }
     } else {
       this.candidate = null;
       this.stable = 0;
     }
+    // подтверждение по времени (с минимумом кадров) — одинаково на 8, 30 и 60 FPS
+    const confirmed = !!this.candidate && this.stable >= C.minStableFrames && now - this.candidateSince >= C.armMs;
 
     if (this.active) {
-      const s = scores[this.active].score;
-      this.lowFrames = s < C.release ? this.lowFrames + 1 : 0;
-      this.quality = this.quality * 0.85 + s * 0.15;
-      const switching = this.candidate && this.candidate !== this.active && this.stable >= C.stableFrames;
-      if (this.lowFrames >= C.releaseFrames || switching || !this.keys.includes(this.activeKey)) {
+      // рука позы на кадр-другой пропала из детекции, но трек ещё жив (HandIdentity держит его
+      // 200 мс) — это не «низкий» кадр: щит не мигает, заряд не теряется
+      const twoHand = TEMPLATE_BY_ID[this.active].hands === 2;
+      const missing = !keys.includes(this.activeKey) || (twoHand && keys.length < 2 && this.keys.length >= 2);
+      if (!missing) {
+        const s = scores[this.active].score;
+        if (s < C.release) {
+          this.lowFrames++;
+          this.lowSince ||= now;
+        } else {
+          this.lowFrames = 0;
+          this.lowSince = 0;
+        }
+        this.quality = this.quality * 0.85 + s * 0.15;
+      }
+      const released = this.lowFrames >= C.releaseFrames && now - this.lowSince >= C.releaseMs;
+      const switching = confirmed && this.candidate !== this.active;
+      if (released || switching || !this.keys.includes(this.activeKey)) {
         this.deactivate(now, true);
       }
     }
 
-    if (!this.active && this.candidate && this.stable >= C.stableFrames) {
+    if (!this.active && confirmed && this.candidate) {
       const s = scores[this.candidate];
       this.active = this.candidate;
       this.activeSince = now;
@@ -364,6 +421,7 @@ export class GestureEngine {
     }
     this.active = null;
     this.lowFrames = 0;
+    this.lowSince = 0;
   }
 
   private cast(g: GestureId, handKey: string, keys: string[], now: number, quality: number, charge: number) {

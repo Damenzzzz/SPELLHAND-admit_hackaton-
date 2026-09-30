@@ -1,4 +1,6 @@
 import type { SpellId } from '../../gestures/types';
+import type { EnemyTrait } from './traits';
+import { localize } from '../../i18n';
 
 export interface LevelDef {
   id: number;
@@ -22,6 +24,8 @@ export interface LevelDef {
   dodgeChance?: number;
   /** Чей портрет показать (для онлайна/призрака — картинка другого уровня). */
   portraitOf?: number;
+  /** Особая механика противника (см. data/traits.ts). */
+  trait?: EnemyTrait;
   boss?: {
     /** Щит отражает долю урона обратно. */
     reflect?: number;
@@ -35,14 +39,17 @@ const reward = (level: number) => 50 + 25 * level;
 export const LEVELS: LevelDef[] = [
   { id: 1, name: 'Опушка', enemyName: 'Ученик-отступник', enemyPortrait: '🧙', arena: 'forest', hp: 60, dmgMul: 0.6, spellWeights: { fireball: 1 }, castInterval: 3000, telegraphMs: 1200, shieldChance: 0, shieldReact: 0, reward: reward(1) },
   { id: 2, name: 'Старый мост', enemyName: 'Огненный бес', enemyPortrait: '👺', arena: 'bridge', hp: 80, dmgMul: 0.65, spellWeights: { fireball: 1 }, castInterval: 3000, telegraphMs: 1200, shieldChance: 0, shieldReact: 0, reward: reward(2) },
-  { id: 3, name: 'Ледяная пещера', enemyName: 'Снежная ведьма', enemyPortrait: '🧝‍♀️', arena: 'cave', hp: 90, dmgMul: 0.7, spellWeights: { fireball: 1, ice: 1 }, castInterval: 2700, telegraphMs: 1100, shieldChance: 0.2, shieldReact: 0.1, reward: reward(3) },
+  { id: 3, name: 'Ледяная пещера', enemyName: 'Снежная ведьма', enemyPortrait: '🧝‍♀️', arena: 'cave', hp: 90, dmgMul: 0.7, spellWeights: { fireball: 1, ice: 1 }, castInterval: 2700, telegraphMs: 1100, shieldChance: 0.2, shieldReact: 0.1, reward: reward(3),
+    trait: { kind: 'iceArmor', reduction: 0.5, meltMs: 5000 } },
   { id: 4, name: 'Туманное болото', enemyName: 'Болотный шаман', enemyPortrait: '🧌', arena: 'swamp', hp: 100, dmgMul: 0.75, spellWeights: { fireball: 1, ice: 1.2 }, castInterval: 2500, telegraphMs: 1000, shieldChance: 0.2, shieldReact: 0.2, reward: reward(4) },
   { id: 5, name: 'Башня Зеркал', enemyName: 'Зеркальный страж', enemyPortrait: '🗿', arena: 'tower', hp: 150, dmgMul: 0.8, spellWeights: { fireball: 1, ice: 1 }, castInterval: 2400, telegraphMs: 1000, shieldChance: 0.25, shieldReact: 0.3, reward: reward(5), boss: { reflect: 0.2 } },
-  { id: 6, name: 'Грозовой утёс', enemyName: 'Громовой жрец', enemyPortrait: '🧛', arena: 'cliff', hp: 120, dmgMul: 0.85, spellWeights: { fireball: 1, ice: 0.8, lightning: 0.8 }, castInterval: 2000, telegraphMs: 900, shieldChance: 0.25, shieldReact: 0.35, dodgeChance: 0.12, reward: reward(6) },
-  { id: 7, name: 'Пустошь ветров', enemyName: 'Кочевник бурь', enemyPortrait: '🥷', arena: 'wastes', hp: 130, dmgMul: 0.9, spellWeights: { fireball: 1, ice: 0.8, lightning: 0.6, wind: 0.8 }, castInterval: 1850, telegraphMs: 800, shieldChance: 0.3, shieldReact: 0.4, dodgeChance: 0.15, reward: reward(7) },
-  { id: 8, name: 'Некрополь', enemyName: 'Лич', enemyPortrait: '💀', arena: 'crypt', hp: 140, dmgMul: 0.95, spellWeights: { fireball: 1, ice: 1, lightning: 0.9, wind: 0.7 }, castInterval: 1650, telegraphMs: 700, shieldChance: 0.3, shieldReact: 0.5, dodgeChance: 0.2, reward: reward(8) },
-  { id: 9, name: 'Врата Бездны', enemyName: 'Демон-страж', enemyPortrait: '👹', arena: 'abyss', hp: 150, dmgMul: 1, spellWeights: { fireball: 1, ice: 0.9, lightning: 1, wind: 0.8 }, castInterval: 1400, telegraphMs: 600, shieldChance: 0.3, shieldReact: 0.6, dodgeChance: 0.25, reward: reward(9) },
-  { id: 10, name: 'Трон Архимага', enemyName: 'Архимаг Морвен', enemyPortrait: '🧙‍♂️', arena: 'throne', hp: 200, dmgMul: 1.05, spellWeights: { fireball: 1, ice: 1, lightning: 1, wind: 1 }, castInterval: 1600, telegraphMs: 700, shieldChance: 0.3, shieldReact: 0.5, dodgeChance: 0.3, reward: reward(10), boss: { enrage: { heal: 40, speedMul: 0.7 } } },
+  { id: 6, name: 'Грозовой утёс', enemyName: 'Громовой жрец', enemyPortrait: '🧛', arena: 'cliff', hp: 120, dmgMul: 0.85, spellWeights: { fireball: 1, ice: 0.8, lightning: 0.8 }, castInterval: 2000, telegraphMs: 900, shieldChance: 0.25, shieldReact: 0.35, dodgeChance: 0.12, reward: reward(6),
+    trait: { kind: 'channeler', firstMs: 6000, everyMs: 11000, channelMs: 3000, spell: 'lightning', powerMul: 2.2, stunMs: 2500 } },
+  { id: 7, name: 'Пустошь ветров', enemyName: 'Кочевник бурь', enemyPortrait: '🥷', arena: 'wastes', hp: 130, dmgMul: 0.9, spellWeights: { fireball: 1, ice: 0.8, lightning: 0.6, wind: 0.8 }, castInterval: 1850, telegraphMs: 800, shieldChance: 0.3, shieldReact: 0.4, dodgeChance: 0.15, reward: reward(7),
+    trait: { kind: 'duelist', firstMs: 5000, everyMs: 9000, windupMs: 1400, travelMs: 900, powerMul: 1.4, exposedMs: 3500, exposedMul: 1.6, guardMul: 0.85 } },
+  { id: 8, name: 'Некрополь', enemyName: 'Лич', enemyPortrait: '💀', arena: 'crypt', hp: 140, dmgMul: 0.95, spellWeights: { fireball: 1, ice: 1, lightning: 0.9, wind: 0.7 }, castInterval: 1650, telegraphMs: 750, shieldChance: 0.3, shieldReact: 0.5, dodgeChance: 0.2, reward: reward(8) },
+  { id: 9, name: 'Врата Бездны', enemyName: 'Демон-страж', enemyPortrait: '👹', arena: 'abyss', hp: 150, dmgMul: 1, spellWeights: { fireball: 1, ice: 0.9, lightning: 1, wind: 0.8 }, castInterval: 1500, telegraphMs: 750, shieldChance: 0.3, shieldReact: 0.6, dodgeChance: 0.25, reward: reward(9) },
+  { id: 10, name: 'Трон Архимага', enemyName: 'Архимаг Морвен', enemyPortrait: '🧙‍♂️', arena: 'throne', hp: 200, dmgMul: 1.05, spellWeights: { fireball: 1, ice: 1, lightning: 1, wind: 1 }, castInterval: 1600, telegraphMs: 850, shieldChance: 0.3, shieldReact: 0.5, dodgeChance: 0.3, reward: reward(10), boss: { enrage: { heal: 40, speedMul: 0.7 } } },
 ];
 
 export const LEVEL_BY_ID = Object.fromEntries(LEVELS.map((l) => [l.id, l])) as Record<number, LevelDef>;
@@ -75,3 +82,5 @@ export const onlineLevel = (nick: string): LevelDef => ({
   hp: 100,
   reward: 150,
 });
+
+localize([LEVELS, GHOST_LEVEL]);

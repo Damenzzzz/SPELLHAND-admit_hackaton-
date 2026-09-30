@@ -2,6 +2,7 @@ import { ASSETS } from '../game/data/assets';
 import type { BattleResult } from '../game/stats';
 import { TEMPLATE_BY_ID } from '../gestures/templates';
 import type { GestureId } from '../gestures/types';
+import { tr } from '../i18n';
 
 const GAME_URL = 'https://spellhand-ruddy.vercel.app';
 const W = 1080;
@@ -41,12 +42,17 @@ export async function renderShareCard(r: BattleResult): Promise<Blob> {
   if (logo) ctx.drawImage(logo, W / 2 - 360, 60, 720, 405);
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = r.won ? '#5dffa0' : '#ff5a6a';
+  const survival = r.mode === 'survival';
+  ctx.fillStyle = r.won || survival ? '#5dffa0' : '#ff5a6a';
   ctx.font = '800 96px system-ui, sans-serif';
-  ctx.fillText(r.won ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ', W / 2, 560);
+  ctx.fillText(survival ? tr(`ВОЛН: ${r.wavesCleared ?? 0}`, `WAVES: ${r.wavesCleared ?? 0}`) : r.won ? tr('ПОБЕДА', 'VICTORY') : tr('ПОРАЖЕНИЕ', 'DEFEAT'), W / 2, 560);
   ctx.fillStyle = '#e8ecff';
   ctx.font = '500 40px system-ui, sans-serif';
-  ctx.fillText(r.mode === 'online' ? `против ${r.opponent}` : r.opponent, W / 2, 620);
+  ctx.fillText(
+    r.mode === 'online' ? tr(`против ${r.opponent}`, `vs ${r.opponent}`) : survival ? tr('Башня выживания', 'Survival Tower') : r.stars ? `${r.opponent} · ${'★'.repeat(r.stars)}` : r.opponent,
+    W / 2,
+    620,
+  );
 
   // главная цифра — точность жестов
   ctx.fillStyle = '#f2c35b';
@@ -54,7 +60,7 @@ export async function renderShareCard(r: BattleResult): Promise<Blob> {
   ctx.fillText(`${Math.round(r.accuracy * 100)}%`, W / 2, 860);
   ctx.fillStyle = '#8b93b8';
   ctx.font = '500 40px system-ui, sans-serif';
-  ctx.fillText('точность жестов', W / 2, 915);
+  ctx.fillText(tr('точность жестов', 'gesture accuracy'), W / 2, 915);
 
   const best = (Object.entries(r.perSpell) as [GestureId, { count: number; avgQuality: number }][]).sort(
     (a, b) => b[1].avgQuality - a[1].avgQuality,
@@ -63,12 +69,12 @@ export async function renderShareCard(r: BattleResult): Promise<Blob> {
   ctx.font = '600 44px system-ui, sans-serif';
   if (best) {
     ctx.fillText(
-      `лучший жест: ${TEMPLATE_BY_ID[best[0]].icon} ${TEMPLATE_BY_ID[best[0]].name} — ${Math.round(best[1].avgQuality * 100)}%`,
+      `${tr('лучший жест', 'best gesture')}: ${TEMPLATE_BY_ID[best[0]].icon} ${TEMPLATE_BY_ID[best[0]].name} — ${Math.round(best[1].avgQuality * 100)}%`,
       W / 2,
       1000,
     );
   }
-  if (r.dailyScore !== undefined) ctx.fillText(`испытание дня: ${r.dailyScore} очков`, W / 2, 1060);
+  if (r.dailyScore !== undefined) ctx.fillText(tr(`испытание дня: ${r.dailyScore} очков`, `daily challenge: ${r.dailyScore} pts`), W / 2, 1060);
 
   // QR на игру
   const qr = document.createElement('canvas');
@@ -77,8 +83,8 @@ export async function renderShareCard(r: BattleResult): Promise<Blob> {
   ctx.textAlign = 'left';
   ctx.fillStyle = '#e8ecff';
   ctx.font = '700 46px system-ui, sans-serif';
-  ctx.fillText('Колдуй руками —', 340, H - 200);
-  ctx.fillText('сможешь точнее?', 340, H - 140);
+  ctx.fillText(tr('Колдуй руками —', 'Cast with your hands —'), 340, H - 200);
+  ctx.fillText(tr('сможешь точнее?', 'can you be more precise?'), 340, H - 140);
   ctx.fillStyle = '#8b93b8';
   ctx.font = '400 30px system-ui, sans-serif';
   ctx.fillText(GAME_URL.replace('https://', ''), 340, H - 90);
@@ -94,7 +100,7 @@ export async function shareResult(r: BattleResult): Promise<'shared' | 'download
   const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   if (mobile && navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'SPELLHAND', text: `Точность ${Math.round(r.accuracy * 100)}% — ${GAME_URL}` });
+      await navigator.share({ files: [file], title: 'SPELLHAND', text: `${tr('Точность', 'Accuracy')} ${Math.round(r.accuracy * 100)}% — ${GAME_URL}` });
       return 'shared';
     } catch {
       // отмена — падаем на скачивание

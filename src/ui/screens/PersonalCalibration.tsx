@@ -9,6 +9,7 @@ import { useGesture } from '../../store/gestureStore';
 import { updateSave, useSave } from '../../store/saveStore';
 import { DwellButton } from '../DwellButton';
 import { SpellIcon } from '../SpellIcon';
+import { tr } from '../../i18n';
 
 const REPS = 3;
 const HOLD_MS = 1200;
@@ -100,16 +101,18 @@ export function PersonalCalibration() {
         {phase === 'hold' && <div className="calib-progress" style={{ ['--p' as string]: progress }} />}
       </CameraView>
       <aside className="side-panel academy-panel">
-        <h2 className="screen-title">🎯 Под мою руку</h2>
+        <h2 className="screen-title">🎯 {tr('Под мою руку', 'Fit my hand')}</h2>
 
         {phase === 'intro' && (
           <>
             <p>
-              Покажи каждый из {PERSONAL_GESTURES.length} жестов по {REPS} раза так, как тебе удобно. Игра запомнит
-              форму твоей руки и будет узнавать жесты увереннее — даже если палец от природы не выпрямляется до конца.
+              {tr(
+                `Покажи каждый из ${PERSONAL_GESTURES.length} жестов по ${REPS} раза так, как тебе удобно. Игра запомнит форму твоей руки и будет узнавать жесты увереннее — даже если палец от природы не выпрямляется до конца.`,
+                `Show each of the ${PERSONAL_GESTURES.length} gestures ${REPS} times the way that feels natural. The game will remember your hand shape and recognize gestures more confidently — even if a finger does not fully straighten.`,
+              )}
             </p>
             <DwellButton className="btn-primary" onSelect={() => setPhase('hold')}>
-              ▶ Начать (~1 мин)
+              ▶ {tr('Начать (~1 мин)', 'Start (~1 min)')}
             </DwellButton>
             {hasModel && (
               <DwellButton
@@ -119,7 +122,7 @@ export function PersonalCalibration() {
                   openAcademy(null);
                 }}
               >
-                ♻ Сбросить мою калибровку
+                ♻ {tr('Сбросить мою калибровку', 'Reset my calibration')}
               </DwellButton>
             )}
           </>
@@ -132,7 +135,9 @@ export function PersonalCalibration() {
             </div>
             <GhostHand gesture={g} size={160} />
             <p className="pose-text">
-              {phase === 'hold' ? `${tpl.poseText}. Держи неподвижно…` : 'Опусти руку и покажи жест ещё раз'}
+              {phase === 'hold'
+                ? `${tpl.poseText}. ${tr('Держи неподвижно…', 'Hold still…')}`
+                : tr('Опусти руку и покажи жест ещё раз', 'Lower your hand and show the gesture again')}
             </p>
             <div className="progress-dots">
               {PERSONAL_GESTURES.map((x, i) => (
@@ -144,13 +149,13 @@ export function PersonalCalibration() {
 
         {phase === 'done' && (
           <>
-            <p className="found">✓ Готово! Жесты подстроены под твою руку.</p>
-            <p className="muted">Калибровка сохранена на этом устройстве. Её можно пройти заново в любой момент.</p>
+            <p className="found">{tr('✓ Готово! Жесты подстроены под твою руку.', '✓ Done! Gestures are tuned to your hand.')}</p>
+            <p className="muted">{tr('Калибровка сохранена на этом устройстве. Её можно пройти заново в любой момент.', 'Calibration is saved on this device. You can redo it any time.')}</p>
           </>
         )}
 
         <div className="panel-buttons">
-          <DwellButton onSelect={() => openAcademy(null)}>← В академию</DwellButton>
+          <DwellButton onSelect={() => openAcademy(null)}>← {tr('В академию', 'Academy')}</DwellButton>
         </div>
       </aside>
     </div>

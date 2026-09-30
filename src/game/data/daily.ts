@@ -1,24 +1,6 @@
-import type { SpellId } from '../../gestures/types';
 import { LEVEL_BY_ID, type LevelDef } from './levels';
-
-/** Модификатор испытания дня — данные, а не код. */
-interface DailyModifier {
-  id: string;
-  text: string;
-  apply: (l: LevelDef) => LevelDef;
-  /** Разрешённые заклинания игрока (нет — все). */
-  allowed?: SpellId[];
-}
-
-const MODIFIERS: DailyModifier[] = [
-  { id: 'fire_only', text: 'Только огонь и щит', apply: (l) => l, allowed: ['fireball'] },
-  { id: 'no_fire', text: 'Без огня — лёд, молния и ветер', apply: (l) => l, allowed: ['ice', 'lightning', 'wind', 'heal'] },
-  { id: 'fast_enemy', text: 'Враг колдует на 25% быстрее', apply: (l) => ({ ...l, castInterval: l.castInterval * 0.75 }) },
-  { id: 'short_telegraph', text: 'Телеграф врага вдвое короче — щит только на реакцию', apply: (l) => ({ ...l, telegraphMs: l.telegraphMs * 0.5 }) },
-  { id: 'tank', text: 'У врага +50% HP', apply: (l) => ({ ...l, hp: Math.round(l.hp * 1.5) }) },
-  { id: 'glass', text: 'Оба бьют вдвое сильнее', apply: (l) => ({ ...l, dmgMul: l.dmgMul * 2 }) },
-  { id: 'shielder', text: 'Враг прячется за щитом — пробивай молнией и ветром', apply: (l) => ({ ...l, shieldChance: 0.6, shieldReact: 0.8 }) },
-];
+import { DAILY_POOL, type Modifier } from './modifiers';
+import { tr } from '../../i18n';
 
 /** Детерминированный RNG из даты — у всех игроков одно и то же испытание. */
 function seeded(seed: string) {
@@ -35,7 +17,7 @@ export interface DailyChallenge {
   /** YYYY-MM-DD по UTC. */
   id: string;
   level: LevelDef;
-  modifier: DailyModifier;
+  modifier: Modifier;
 }
 
 export const todayId = (d = new Date()) => d.toISOString().slice(0, 10);
@@ -43,8 +25,10 @@ export const todayId = (d = new Date()) => d.toISOString().slice(0, 10);
 export function dailyChallenge(id = todayId()): DailyChallenge {
   const rnd = seeded(`spellhand-${id}`);
   const base = LEVEL_BY_ID[3 + Math.floor(rnd() * 7)]; // уровни 3–9: есть что показать
-  const modifier = MODIFIERS[Math.floor(rnd() * MODIFIERS.length)];
-  const level = { ...modifier.apply(base), id: 0, name: `Испытание дня ${id}` };
+  const modifier = DAILY_POOL[Math.floor(rnd() * DAILY_POOL.length)];
+  // особые механики противников не переносим: модификатор дня может запретить контр-заклинание
+  // (например, «без огня» против ледяной брони), а рейтинг дня должен оставаться сравнимым
+  const level = { ...(modifier.apply?.(base) ?? base), trait: undefined, id: 0, name: tr(`Испытание дня ${id}`, `Daily challenge ${id}`) };
   return { id, level, modifier };
 }
 

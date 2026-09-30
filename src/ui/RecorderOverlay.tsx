@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useVision } from '../store/visionStore';
 import { setRecordingLabel, startRecording, stopRecordingAndDownload } from '../vision/recorder';
 
-/** Сценарий записи: каждый жест с движением + негативы и типичные near-miss. */
+/** Сценарий записи: каждый жест с движением, негативы, near-miss и сегменты надёжности. */
 export const RECORDING_SCRIPT: { label: string; text: string }[] = [
   { label: 'fireball', text: '🔥 Огненный шар: открытая ладонь к камере, подержи и ТОЛКНИ вперёд — 3 раза' },
   { label: 'ice', text: '❄️ Лёд: указательный + средний вместе, 3 резких кивка кистью вниз — 2 серии' },
@@ -13,6 +13,13 @@ export const RECORDING_SCRIPT: { label: string; text: string }[] = [
   { label: 'lightning_low', text: '⚡ Молния, но рука НИЖЕ головы и указательный чуть согнут (ошибка)' },
   { label: 'fireball_ring', text: '🔥 Ладонь, но безымянный согнут (ошибка)' },
   { label: 'none', text: '🙌 Ничего не колдуй: просто двигай руками естественно, почеши нос, помаши' },
+  // --- надёжность: переходы, курсор меню, потеря руки, свет ---
+  { label: 'switch_fire_shield', text: '🔁 Меняй ладонь ↔ кулак каждую секунду, БЕЗ толчков (переходы не должны стрелять)' },
+  { label: 'switch_ice_lightning', text: '🔁 Меняй лёд ↔ указательный вверх над головой, БЕЗ кивков и взмахов' },
+  { label: 'pointer_idle', text: '👉 Води указательным по экрану, как курсором в меню, ничего не колдуй' },
+  { label: 'hand_out', text: '🙈 Покажи кулак, убери руку из кадра, верни; повторяй — без движений заклинаний' },
+  { label: 'shield_steady', text: '🛡️ Держи кулак неподвижно все 10 секунд (щит не должен мигать)' },
+  { label: 'low_light', text: '💡 Приглуши свет (закрой лампу рукой/шторой) и покажи огненный шар с толчком — 3 раза' },
 ];
 
 const PREP_MS = 3000;

@@ -1,3 +1,4 @@
+import { localize } from '../../i18n';
 /**
  * Оценка жеста при касте: точность = сила. Perfect даёт бонус урона и растит комбо,
  * «Слабо» бьёт по базовой формуле 0.6 + 0.4·качество и обрывает серию.
@@ -24,3 +25,5 @@ export const gradeOf = (quality: number): GradeDef => GRADES.find((g) => quality
 
 /** Комбо: каждый удачный (не «слабо») каст подряд +5% урона, максимум +25%. */
 export const COMBO = { stepBonus: 0.05, maxSteps: 5 };
+
+localize(GRADES);

@@ -13,6 +13,7 @@ import { CoinBadge } from '../CoinBadge';
 import { DwellButton } from '../DwellButton';
 import { HintCard } from '../HintCard';
 import { SpellIcon } from '../SpellIcon';
+import { tr } from '../../i18n';
 
 const GAME_MS = 60000;
 /** Время на жест: от 6 с в начале до 3 с к концу серии. */
@@ -81,7 +82,7 @@ export function Rush() {
       const s = ref.current!;
       const now = performance.now();
       if (g !== s.target) {
-        s.flash = { text: `Это ${TEMPLATE_BY_ID[g].name}! Серия сброшена`, good: false };
+        s.flash = { text: tr(`Это ${TEMPLATE_BY_ID[g].name}! Серия сброшена`, `That’s ${TEMPLATE_BY_ID[g].name}! Streak reset`), good: false };
         s.streak = 0;
         sfx.reject();
       } else {
@@ -114,7 +115,7 @@ export function Rush() {
       const s = ref.current!;
       setLeft(Math.max(0, GAME_MS - (now - start)));
       if (now - s.promptStart > s.promptMs) {
-        s.flash = { text: 'Не успел — серия сброшена', good: false };
+        s.flash = { text: tr('Не успел — серия сброшена', 'Too slow — streak reset'), good: false };
         s.streak = 0;
         next(s, now);
         setSt({ ...s });
@@ -158,13 +159,20 @@ export function Rush() {
       </CameraView>
       <aside className="side-panel academy-panel">
         <CoinBadge />
-        <h2 className="screen-title">⚡ Разминка</h2>
+        <h2 className="screen-title">⚡ {tr('Разминка', 'Warm-up')}</h2>
         {phase === 'intro' && (
           <>
-            <p>60 секунд: показывай жест, который загадан, пока не кончилось время. Серия растит множитель до ×10.</p>
-            <p className="muted">Рекорд: {best}</p>
+            <p>
+              {tr(
+                '60 секунд: показывай жест, который загадан, пока не кончилось время. Серия растит множитель до ×10.',
+                '60 seconds: show the requested gesture before time runs out. A streak grows the multiplier up to ×10.',
+              )}
+            </p>
+            <p className="muted">
+              {tr('Рекорд', 'Best')}: {best}
+            </p>
             <DwellButton className="btn-primary" onSelect={() => setPhase('play')}>
-              ▶ Старт
+              ▶ {tr('Старт', 'Start')}
             </DwellButton>
           </>
         )}
@@ -183,15 +191,15 @@ export function Rush() {
                 <b style={{ color: MULT_COLORS[Math.min(MULT_COLORS.length - 1, Math.floor((mult - 1) / 1.5))] }}>
                   ×{mult}
                 </b>
-                <span>множитель</span>
+                <span>{tr('множитель', 'multiplier')}</span>
               </div>
               <div className="stat">
                 <b>{st.score}</b>
-                <span>очки</span>
+                <span>{tr('очки', 'score')}</span>
               </div>
               <div className="stat">
                 <b>{Math.ceil(left / 1000)}</b>
-                <span>секунд</span>
+                <span>{tr('секунд', 'seconds')}</span>
               </div>
             </div>
           </>
@@ -199,18 +207,18 @@ export function Rush() {
         {phase === 'done' && st && (
           <>
             <p className="found">
-              {st.score} очков · {st.hits}/{st.prompts} жестов
+              {st.score} {tr('очков', 'pts')} · {st.hits}/{st.prompts} {tr('жестов', 'gestures')}
             </p>
             <p className="muted">
-              {st.score >= best ? '🏆 Новый рекорд!' : `Рекорд: ${best}`} · {st.flash?.text}
+              {st.score >= best ? tr('🏆 Новый рекорд!', '🏆 New record!') : `${tr('Рекорд', 'Best')}: ${best}`} · {st.flash?.text}
             </p>
             <DwellButton className="btn-primary" onSelect={() => setPhase('intro')}>
-              🔁 Ещё раз
+              🔁 {tr('Ещё раз', 'Again')}
             </DwellButton>
           </>
         )}
         <div className="panel-buttons">
-          <DwellButton onSelect={() => go('menu')}>← В меню</DwellButton>
+          <DwellButton onSelect={() => go('menu')}>← {tr('В меню', 'Menu')}</DwellButton>
         </div>
       </aside>
     </div>

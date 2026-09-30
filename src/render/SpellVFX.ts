@@ -4,6 +4,8 @@ import { ASSETS } from '../game/data/assets';
 import { SHIELDS } from '../game/data/items';
 import { RUNES } from '../gestures/runes/runes';
 import { GESTURE_COLOR } from './colors';
+import { getSettings } from '../store/settingsStore';
+import { tr } from '../i18n';
 
 export interface Point {
   x: number;
@@ -88,6 +90,7 @@ export class SpellVfx {
   }
 
   private burst(p: Point, color: string, n: number, speed = 220, kind: Particle['kind'] = 'dot', size = 4) {
+    if (getSettings().reducedEffects) n = Math.ceil(n / 4);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const v = speed * (0.3 + Math.random() * 0.7);
@@ -120,7 +123,7 @@ export class SpellVfx {
         const color = GESTURE_COLOR[e.spell];
         this.burst(target, color, e.blocked ? 14 : 26, e.blocked ? 160 : 260);
         if (e.hpDamage > 0) this.floatText(target, `-${e.hpDamage}`, e.target === 'player' ? '#ff5a6a' : '#ffffff');
-        else if (e.blocked) this.floatText(target, 'блок', '#bcd6ff');
+        else if (e.blocked) this.floatText(target, tr('блок', 'block'), '#bcd6ff');
         if (e.blocked) this.flashes.push({ side: e.target, until: now + 180, color: '#ffffff' });
         if (e.hpDamage > 0 && e.target === 'player') this.shake = Math.min(14, 4 + e.hpDamage / 3);
         break;
@@ -128,7 +131,7 @@ export class SpellVfx {
       case 'shieldBreak': {
         const c = sidePos(e.side);
         const r = e.side === 'player' ? layout.shieldRadius : layout.enemyRadius * 1.25;
-        for (let i = 0; i < 26; i++) {
+        for (let i = 0; i < (getSettings().reducedEffects ? 6 : 26); i++) {
           const a = Math.random() * Math.PI * 2;
           this.particles.push({
             x: c.x + Math.cos(a) * r * Math.random(),
@@ -171,7 +174,7 @@ export class SpellVfx {
         this.burst(e.side === 'enemy' ? layout.enemy : layout.playerCenter, '#bfefff', 36, 180, 'shard', 7);
         break;
       case 'dodge':
-        this.floatText({ x: layout.playerCenter.x, y: layout.playerCenter.y - 80 }, 'УКЛОНЕНИЕ', '#b6f5d8');
+        this.floatText({ x: layout.playerCenter.x, y: layout.playerCenter.y - 80 }, tr('УКЛОНЕНИЕ', 'DODGE'), '#b6f5d8');
         break;
       case 'dodged':
         this.burst(layout.playerCenter, '#b6f5d8', 16, 240);
@@ -184,13 +187,13 @@ export class SpellVfx {
         this.origins.set(e.projectile.id, { ...layout.playerHand });
         this.burst(layout.playerCenter, '#f2c35b', 40, 320);
         this.flashes.push({ side: 'player', until: now + 250, color: '#f2c35b' });
-        this.floatText(layout.playerHand, 'ПАРИРОВАНИЕ!', '#f2c35b');
+        this.floatText(layout.playerHand, tr('ПАРИРОВАНИЕ!', 'PARRY!'), '#f2c35b');
         break;
       }
       case 'parryMiss':
         this.floatText(
           { x: layout.playerHand.x, y: layout.playerHand.y + 50 },
-          e.deltaMs < 0 ? `рано на ${-e.deltaMs} мс` : `поздно на ${e.deltaMs} мс`,
+          e.deltaMs < 0 ? tr(`рано на ${-e.deltaMs} мс`, `${-e.deltaMs} ms early`) : tr(`поздно на ${e.deltaMs} мс`, `${e.deltaMs} ms late`),
           '#ff9a3d',
         );
         break;
@@ -345,6 +348,8 @@ export class SpellVfx {
   }
 
   frame(battle: Battle, layout: VfxLayout, dt: number, now: number, charge: { active: boolean; value: number }) {
+    const reduced = getSettings().reducedEffects;
+    if (reduced) { this.shake = 0; this.flashes = []; }
     const ctx = this.ctx;
     const { width, height } = ctx.canvas;
     const dpr = window.devicePixelRatio || 1;
@@ -368,18 +373,18 @@ export class SpellVfx {
         ps.durability / ps.max,
         battle.loadout.shield.color,
         flashFor('player'),
-        now,
+        reduced ? 0 : now,
         this.runes.get(battle.loadout.shield.id),
       );
     }
     const es = battle.enemy.shield;
     if (es.up) {
-      this.drawShield(layout.enemy, layout.enemyRadius * 1.25, es.durability / es.max, '#ff7fd0', flashFor('enemy'), now);
+      this.drawShield(layout.enemy, layout.enemyRadius * 1.25, es.durability / es.max, '#ff7fd0', flashFor('enemy'), reduced ? 0 : now);
     }
 
     // заряд огненного шара в ладони
     if (charge.active) {
-      const r = 14 + 26 * charge.value + Math.sin(now / 60) * 3;
+      const r = 14 + 26 * charge.value + (reduced ? 0 : Math.sin(now / 60) * 3);
       const g = ctx.createRadialGradient(layout.playerHand.x, layout.playerHand.y, 1, layout.playerHand.x, layout.playerHand.y, r);
       g.addColorStop(0, '#fff6c0');
       g.addColorStop(0.5, GESTURE_COLOR.fireball);

@@ -9,6 +9,7 @@ import { AssetImg } from '../AssetImg';
 import { CoinBadge } from '../CoinBadge';
 import { DwellButton } from '../DwellButton';
 import { ScreenShell } from '../ScreenShell';
+import { tr } from '../../i18n';
 
 const StaffPreview = lazy(() => import('../../render/StaffPreview'));
 
@@ -25,26 +26,31 @@ export function Shop() {
     if (equipped[item.kind] === item.id) return;
     if (owned.includes(item.id)) {
       equipItem(item.id);
-      setMsg(`Экипировано: ${item.name}`);
+      setMsg(`${tr('Экипировано', 'Equipped')}: ${item.name}`);
     } else if (buyItem(item.id)) {
       sfx.victory();
-      setMsg(`Куплено и экипировано: ${item.name}`);
+      setMsg(`${tr('Куплено и экипировано', 'Bought and equipped')}: ${item.name}`);
     } else {
       sfx.reject();
-      setMsg(`Не хватает ${item.price - coins} 🪙 — побеждай точнее, бонус за точность до +50%`);
+      setMsg(
+        tr(
+          `Не хватает ${item.price - coins} 🪙 — побеждай точнее, бонус за точность до +50%`,
+          `${item.price - coins} 🪙 short — win more precisely, accuracy bonus up to +50%`,
+        ),
+      );
     }
   };
 
   return (
     <ScreenShell className="shop">
       <CoinBadge />
-      <h2 className="screen-title">🛒 Магазин</h2>
+      <h2 className="screen-title">🛒 {tr('Магазин', 'Shop')}</h2>
       <div className="tabs">
         <DwellButton className={tab === 'staff' ? 'tab-on' : ''} onSelect={() => setTab('staff')}>
-          🪄 Посохи
+          🪄 {tr('Посохи', 'Staffs')}
         </DwellButton>
         <DwellButton className={tab === 'shield' ? 'tab-on' : ''} onSelect={() => setTab('shield')}>
-          🛡️ Щиты
+          🛡️ {tr('Щиты', 'Shields')}
         </DwellButton>
       </div>
       {tab === 'staff' && (
@@ -52,7 +58,7 @@ export function Shop() {
           <Suspense fallback={null}>
             <StaffPreview id={equipped.staff} />
           </Suspense>
-          <span>{STAFFS.find((s) => s.id === equipped.staff)?.name} — в руке в бою</span>
+          <span>{STAFFS.find((s) => s.id === equipped.staff)?.name} — {tr('в руке в бою', 'in your hand in battle')}</span>
         </div>
       )}
       <div className="shop-grid">
@@ -73,14 +79,14 @@ export function Shop() {
               <span className="shop-name">{item.name}</span>
               <small>{item.effect}</small>
               <span className="shop-price">
-                {isEquipped ? '✓ надето' : isOwned ? 'надеть' : `🪙 ${item.price}`}
+                {isEquipped ? tr('✓ надето', '✓ equipped') : isOwned ? tr('надеть', 'equip') : `🪙 ${item.price}`}
               </span>
             </DwellButton>
           );
         })}
       </div>
       {msg && <p className="shop-msg">{msg}</p>}
-      <DwellButton onSelect={() => go('menu')}>← В меню</DwellButton>
+      <DwellButton onSelect={() => go('menu')}>← {tr('В меню', 'Menu')}</DwellButton>
     </ScreenShell>
   );
 }

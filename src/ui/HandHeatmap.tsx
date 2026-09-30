@@ -1,6 +1,7 @@
 import { OPEN, synthHand } from '../gestures/synthHand';
 import { BONES } from '../render/HandOverlay';
 import { FINGER_JOINTS, FINGERS, type FingerId } from '../vision/features';
+import { isEn, tr } from '../i18n';
 
 const FINGER_RU: Record<FingerId, string> = {
   thumb: 'большой',
@@ -9,6 +10,8 @@ const FINGER_RU: Record<FingerId, string> = {
   ring: 'безымянный',
   pinky: 'мизинец',
 };
+
+const FINGER_EN: Record<FingerId, string> = { thumb: 'thumb', index: 'index', middle: 'middle', ring: 'ring', pinky: 'pinky' };
 
 /** Цвет от зелёного (нет ошибок) к красному (главная проблема). */
 const heat = (k: number) => `hsl(${Math.round(130 - 130 * k)} 85% 58%)`;
@@ -27,7 +30,7 @@ export function HandHeatmap({ errors, size = 220 }: { errors: Record<FingerId, n
 
   return (
     <figure className="heatmap">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Ошибки по пальцам">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={tr('Ошибки по пальцам', 'Errors by finger')}>
         {BONES.map(([a, b]) => {
           const f = fingerOf(b) ?? fingerOf(a);
           const color = f && FINGER_JOINTS[f].includes(a) ? heat(errors[f] / max) : 'rgba(255,255,255,0.35)';
@@ -56,10 +59,11 @@ export function HandHeatmap({ errors, size = 220 }: { errors: Record<FingerId, n
       <figcaption>
         {errors[worst] > 0 ? (
           <>
-            Чаще всего подводит <b>{FINGER_RU[worst]}</b> — {errors[worst]} ош.
+            {tr('Чаще всего подводит', 'Most errors:')} <b>{(isEn() ? FINGER_EN : FINGER_RU)[worst]}</b> — {errors[worst]}{' '}
+            {tr('ош.', 'err.')}
           </>
         ) : (
-          'Ошибок по пальцам пока нет'
+          tr('Ошибок по пальцам пока нет', 'No finger errors yet')
         )}
       </figcaption>
     </figure>

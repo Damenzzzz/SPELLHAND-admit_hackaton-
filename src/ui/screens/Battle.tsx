@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { isDev } from '../../dev';
+import { BattleClock, BATTLE_COUNTDOWN_MS, type BattlePhase } from '../../game/battleClock';
 import { Battle, type BattleEvent } from '../../game/combat';
 import { ASSETS } from '../../game/data/assets';
 import { dailyChallenge, dailyScore } from '../../game/data/daily';
 import { gradeOf } from '../../game/data/grades';
 import { RUNES } from '../../gestures/runes/runes';
 import { GHOST_LEVEL, LEVEL_BY_ID, onlineLevel } from '../../game/data/levels';
+import { combineModifiers, modifiersOf } from '../../game/data/modifiers';
 import { COMBAT, SPELLS } from '../../game/data/spells';
-import { applyBattleResult, applyOnlineResult, currentLoadout } from '../../game/economy';
+import { SURVIVAL, survivalLevel } from '../../game/data/survival';
+import { applyBattleResult, applyDailyResult, applyOnlineResult, applySurvivalResult, currentLoadout } from '../../game/economy';
 import { recordSession } from '../../game/progress';
 import { sfx } from '../../game/sfx';
 import { BattleStats } from '../../game/stats';
@@ -17,37 +20,30 @@ import type { GestureId, SpellId } from '../../gestures/types';
 import { currentLink, HAND_EVERY_MS, remoteHand, setCurrentLink, STATE_EVERY_MS } from '../../net/session';
 import { OpponentHand } from '../../render/OpponentHand';
 import { CameraView } from '../../render/CameraView';
-import { coverBox } from '../../render/HandOverlay';
+import { computeBattleLayout } from '../../render/battleLayout';
 import { SpellVfx, type VfxLayout } from '../../render/SpellVFX';
 import { useGame } from '../../store/gameStore';
 import { useGesture } from '../../store/gestureStore';
 import { poseEvents, usePose } from '../../store/poseStore';
-import { updateSave, useSave } from '../../store/saveStore';
-import { useVision } from '../../store/visionStore';
+import { EMPTY_FEATS, updateSave, useSave } from '../../store/saveStore';
 import { AssetImg } from '../AssetImg';
+import { Bar } from '../Bar';
+import { DwellButton } from '../DwellButton';
 import { FAIL_BADGE } from '../failCategories';
 import { HintCard } from '../HintCard';
 import { SpellIcon } from '../SpellIcon';
+import { ArmedStatus } from '../ArmedStatus';
+import { canUseIce, telegraphAdvice } from '../battleAdvice';
+import { ToastQueue, type ToastItem } from '../toastQueue';
+import { ComboPanel } from '../ComboPanel';
+import { COMBO_BY_ID } from '../../game/data/combos';
+import { TraitStatus, traitState } from '../TraitStatus';
+import { TRAIT_INFO } from '../../game/data/traits';
+import { tr } from '../../i18n';
 
-const COUNTDOWN_MS = 3000;
 const END_DELAY_MS = 2200;
 
-type Phase = 'countdown' | 'fight' | 'end';
-
-interface Toast {
-  id: number;
-  text: string;
-  kind: 'bad' | 'info' | 'good';
-}
-
-function Bar({ value, max, className, label }: { value: number; max: number; className: string; label?: string }) {
-  return (
-    <div className={`bar ${className}`}>
-      <div className="bar-fill" style={{ transform: `scaleX(${Math.max(0, value) / max})` }} />
-      <span className="bar-label">{label ?? `${Math.ceil(value)} / ${max}`}</span>
-    </div>
-  );
-}
+type Toast = ToastItem;
 
 export function BattleScreen() {
   const setup = useGame((s) => s.setup);
@@ -55,52 +51,94 @@ export function BattleScreen() {
   const go = useGame((s) => s.go);
   const online = setup.kind === 'online';
   const [daily] = useState(() => dailyChallenge());
-  const level =
+  // мутаторы кампании и модификатор дня (уровень дня уже изменён в dailyChallenge)
+  const [mods] = useState(() =>
+    combineModifiers(modifiersOf(setup.kind === 'campaign' ? setup.mutators : setup.kind === 'daily' ? [daily.modifier.id] : [])),
+  );
+  const [level] = useState(() =>
     setup.kind === 'campaign'
-      ? LEVEL_BY_ID[setup.level]
+      ? mods.apply(LEVEL_BY_ID[setup.level])
       : online
         ? onlineLevel(setup.opponentNick)
         : setup.kind === 'daily'
           ? daily.level
-          : GHOST_LEVEL;
+          : setup.kind === 'survival'
+            ? survivalLevel(setup.wave)
+            : GHOST_LEVEL,
+  );
+  const survivalWave = setup.kind === 'survival' ? setup.wave : 0;
 
   const rootRef = useRef<HTMLDivElement>(null);
   const camRef = useRef<HTMLDivElement>(null);
   const enemyRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pauseDialogRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<{ pause: () => void; resume: () => void } | null>(null);
   const battleRef = useRef<Battle | null>(null);
   if (!battleRef.current) {
     battleRef.current = new Battle(level, currentLoadout(), Math.random, online);
-    if (setup.kind === 'daily') battleRef.current.allowedSpells = daily.modifier.allowed ?? null;
+    battleRef.current.applyModifiers(mods);
+    const run = useGame.getState().survival;
+    if (setup.kind === 'survival' && run) battleRef.current.player.hp = Math.min(battleRef.current.player.maxHp, run.hp);
   }
   const battle = battleRef.current;
 
-  const [phase, setPhase] = useState<Phase>('countdown');
+  const [phase, setPhase] = useState<BattlePhase>('countdown');
   const [countdown, setCountdown] = useState(3);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [remoteForming, setRemoteForming] = useState<GestureId | null>(null);
   const [, setHudTick] = useState(0);
 
   useEffect(() => {
-    const stats = new BattleStats();
+    if (phase === 'paused') pauseDialogRef.current?.querySelector('button')?.focus();
+  }, [phase]);
+
+  useEffect(() => {
+    // выживание: статистика жестов копится за весь забег
+    const run = setup.kind === 'survival' ? useGame.getState().survival : null;
+    const stats = run?.stats ?? new BattleStats();
+    // приёмы для достижений — пишем в сохранение одним изменением в конце боя
+    const feats = { combos: 0, parries: 0, runes: new Set<string>(), shieldUsed: false };
     const vfx = new SpellVfx(canvasRef.current!.getContext('2d')!);
-    let phaseNow: Phase = 'countdown';
-    let toastId = 0;
     let layout: VfxLayout | null = null;
     let endTimer = 0;
     // онлайн: общий старт по часам инициатора; иначе обычные 3 с
-    const countdownMs = setup.kind === 'online' ? Math.max(500, setup.startAt - Date.now()) : COUNTDOWN_MS;
+    const countdownMs = setup.kind === 'online' ? Math.max(500, setup.startAt - Date.now()) : BATTLE_COUNTDOWN_MS;
+    const start = performance.now();
+    const clock = new BattleClock(start, online, countdownMs);
+    let vfxNow = start;
+    const resetInput = () => {
+      gestureEngine.resetIntent();
+      useGesture.setState(({ snap }) => ({
+        snap: snap ? {
+          ...snap, active: null, activeSince: 0, quality: 0, charge: 0, overcharge: 0,
+          rune: { penDown: false, trail: [] }, hint: null,
+        } : null,
+      }));
+    };
+    const pause = () => {
+      if (!clock.pause()) return;
+      resetInput();
+      setPhase(clock.phase);
+    };
+    const resume = () => {
+      if (document.hidden || !clock.resume(performance.now())) return;
+      setCountdown(3);
+      setPhase(clock.phase);
+    };
+    controlsRef.current = { pause, resume };
     const link = online ? currentLink() : null;
     let remoteEnded = false;
     const gestureQuality = () => useGesture.getState().snap?.quality ?? 1;
     if (link) {
-      link.onCast = (c) => phaseNow === 'fight' && battle.remoteCast(c);
+      link.onCast = (c) => clock.phase === 'fight' && battle.remoteCast(c);
       link.onState = (st) => battle.applyRemoteState(st);
       link.onEnd = () => {
         remoteEnded = true;
         battle.forceEnd('player');
       };
       link.onForming = (g) => setRemoteForming(g);
+      link.onFx = (f) => battle.remoteComboResult(f.cid, f.ok);
       link.onHand = (lm) => {
         remoteHand.pts = lm ? Array.from({ length: lm.length / 2 }, (_, i) => ({ x: lm[i * 2] / 1e4, y: lm[i * 2 + 1] / 1e4 })) : null;
         remoteHand.at = performance.now();
@@ -108,20 +146,31 @@ export function BattleScreen() {
       link.onLeave = () => {
         if (battle.over) return;
         remoteEnded = true;
-        toast('Соперник покинул бой — победа засчитана', 'good');
+        toast(tr('Соперник покинул бой — победа засчитана', 'Opponent left — victory awarded'), 'good');
         battle.forceEnd('player');
       };
     }
 
-    const toast = (text: string, kind: Toast['kind'] = 'info') => {
-      const id = ++toastId;
-      setToasts((t) => [...t.slice(-2), { id, text, kind }]);
-      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 1600);
+    // повторы с тем же ключом сливаются; время жизни — по часам кадра (без setTimeout)
+    const toastQueue = new ToastQueue();
+    const toast = (text: string, kind: Toast['kind'] = 'info', key?: string) => {
+      toastQueue.push(performance.now(), text, kind, key);
+      setToasts([...toastQueue.items]);
+    };
+    /** Чем тушить горение: лёд — только если не запрещён модификатором. */
+    const burnAdvice = () => (canUseIce(battle) ? tr('льдом или лечением', 'with ice or healing') : tr('лечением', 'with healing'));
+
+    // особые механики: подсказка только при первом появлении в бою, дальше — панель у противника
+    const seenTraits = new Set<string>();
+    const once = (key: string, text: string, kind: Toast['kind']) => {
+      if (seenTraits.has(key)) return;
+      seenTraits.add(key);
+      toast(text, kind);
     };
 
     let lastWeakest: string | null = null;
     const offGesture = gestureEngine.on((e) => {
-      if (phaseNow !== 'fight') return;
+      if (clock.phase !== 'fight') return;
       if (e.type === 'cast') {
         if (e.gesture === 'shield' || e.gesture === 'heal') return;
         lastWeakest = e.weakest && e.weakest.score < 0.9 ? e.weakest.hint : null;
@@ -134,14 +183,13 @@ export function BattleScreen() {
         if (e.type === 'overcharge') {
           battle.backfire(COMBAT.backfireDamage);
           sfx.hit();
-          toast('💥 Перезаряд! Шар взорвался в руке', 'bad');
+          toast(tr('💥 Перезаряд! Шар взорвался в руке', '💥 Overcharge! The ball exploded in your hand'), 'bad', 'overcharge');
         } else battle.breakCombo();
       }
     });
 
     const onBattle = (e: BattleEvent) => {
-      const now = performance.now();
-      if (layout) vfx.onEvent(e, layout, now);
+      if (layout) vfx.onEvent(e, layout, vfxNow);
       switch (e.type) {
         case 'cast':
           sfx.cast(e.spell);
@@ -157,6 +205,10 @@ export function BattleScreen() {
               slowMs: p?.slow?.ms ?? null,
               interrupt: p?.interrupt ?? false,
               travelMs: p ? p.hitT - p.spawnT : 0,
+              cid: p?.netId,
+              burn: p?.burn ?? false,
+              combo: p?.combo ?? null,
+              steam: p?.steam ?? null,
             });
           }
           if (e.side === 'player' && e.spell === 'heal') stats.success('heal', useGesture.getState().snap?.quality ?? 1);
@@ -167,50 +219,82 @@ export function BattleScreen() {
               `${g.label}${e.combo && e.combo > 1 ? ` ×${e.combo}` : ''}`,
               g.color,
             );
-            if (g.id === 'weak' && lastWeakest) toast(`Слабо: ${lastWeakest.toLowerCase()}`, 'bad');
+            // каст прошёл, но жест неточный — совет, а не ошибка (урон ниже)
+            if (g.id === 'weak' && lastWeakest) toast(`${tr('Слабый жест', 'Weak gesture')}: ${lastWeakest.toLowerCase()}`, 'info', 'weak');
           }
           break;
         case 'telegraph':
           sfx.enemyTelegraph();
           break;
-        case 'comboCast':
+        case 'comboCast': {
+          // условный «Паровой взрыв» объявим только при фактическом срабатывании (comboEffect)
+          if (e.conditional) break;
+          feats.combos++;
           sfx.victory();
-          toast(`⚡ Комбо «${e.name}»! +${e.bonus} урона`, 'good');
+          toast(`⚡ ${e.name}! ${COMBO_BY_ID[e.id].effect}`, 'good');
+          if (layout) vfx.floatText({ x: layout.playerHand.x, y: layout.playerHand.y - 70 }, e.name.toUpperCase(), '#f2c35b');
+          break;
+        }
+        case 'comboEffect':
+          if (e.by === 'player') {
+            feats.combos++;
+            sfx.victory();
+            toast(`💨 ${COMBO_BY_ID[e.id].name}! ${COMBO_BY_ID[e.id].effect}`, 'good');
+            if (layout) vfx.floatText(layout.enemy, COMBO_BY_ID[e.id].name.toUpperCase(), '#f2c35b');
+          } else {
+            sfx.hit();
+            toast(tr(`💨 ${COMBO_BY_ID[e.id].name} соперника — ты оглушён`, `💨 Opponent’s ${COMBO_BY_ID[e.id].name} — you are stunned`), 'bad');
+            // PvP: я авторитетен по своему HP — сообщаю отправителю, что эффект сработал
+            if (link && e.netId !== undefined) link.sendFx({ cid: e.netId, ok: true });
+          }
+          break;
+        case 'comboFizzle':
+          if (e.by === 'player') {
+            const why =
+              e.reason === 'blocked'
+                ? tr('лёд попал в щит', 'the ice hit a shield')
+                : e.reason === 'dodged'
+                  ? tr('промах', 'missed')
+                  : tr('цель уже не горит', 'the target is no longer burning');
+            toast(tr(`${COMBO_BY_ID[e.id].name} не сработал: ${why}`, `${COMBO_BY_ID[e.id].name} failed: ${why}`), 'info', 'fizzle');
+          } else if (link && e.netId !== undefined) link.sendFx({ cid: e.netId, ok: false });
           break;
         case 'blownAway':
-          toast(`🌪️ Ветер сдул снарядов: ${e.count}`, 'good');
+          toast(tr(`🌪️ Ветер сдул снарядов: ${e.count}`, `🌪️ Wind blew away projectiles: ${e.count}`), 'good', 'blown');
           break;
         case 'burn':
-          if (e.on && e.side === 'player') toast('🔥 Горишь! Погаси льдом или лечением', 'bad');
+          if (e.on && e.side === 'player') toast(tr(`🔥 Горишь! Погаси ${burnAdvice()}`, `🔥 You are burning! Put it out ${burnAdvice()}`), 'bad', 'burn');
           break;
         case 'runeCast':
+          feats.runes.add(e.rune);
           sfx.cast(e.rune === 'chain' ? 'lightning' : e.rune === 'prison' ? 'ice' : e.rune === 'meteor' ? 'fireball' : 'heal');
           sfx.victory();
           toast(`✍️ ${RUNES[e.rune].glyph} ${RUNES[e.rune].name}! ${RUNES[e.rune].effect}`, 'good');
           break;
         case 'frozen':
-          if (e.side === 'enemy') toast(`🧊 ${level.enemyName} заморожен`, 'good');
+          if (e.side === 'enemy') toast(tr(`🧊 ${level.enemyName} заморожен`, `🧊 ${level.enemyName} is frozen`), 'good');
           break;
         case 'dodge':
           sfx.cast('wind');
           break;
         case 'enemyDodged':
-          toast(`${level.enemyName} уклонился!`, 'info');
+          toast(tr(`${level.enemyName} уклонился — промах`, `${level.enemyName} dodged — miss`), 'info', 'enemyDodged');
           break;
         case 'dodged':
-          toast('🌀 Уклонение! Снаряд мимо', 'good');
+          toast(tr('🌀 Уклонение! Снаряд мимо', '🌀 Dodge! The projectile missed'), 'good');
           break;
         case 'meditate':
           sfx.cast('heal');
-          toast(`🧘 Медитация: +${e.mana} маны`, 'good');
+          toast(tr(`🧘 Медитация: +${e.mana} маны`, `🧘 Meditation: +${e.mana} mana`), 'good');
           break;
         case 'parry':
+          if (e.side === 'player') feats.parries++;
           sfx.block();
           sfx.cast('lightning');
           stats.shieldBlocked(1);
           break;
         case 'comboBreak':
-          if (e.combo >= 3) toast(`Серия ×${e.combo} прервана`, 'info');
+          if (e.combo >= 3) toast(tr(`Серия ×${e.combo} прервана`, `Streak ×${e.combo} broken`), 'info', 'comboBreak');
           break;
         case 'hit':
           if (e.blocked && e.target === 'player') stats.shieldBlocked(gestureQuality());
@@ -219,6 +303,7 @@ export function BattleScreen() {
           break;
         case 'shieldUp':
           if (e.side === 'player') {
+            feats.shieldUsed = true;
             sfx.shieldUp();
             stats.shieldUp(battle.t);
           }
@@ -228,38 +313,100 @@ export function BattleScreen() {
           break;
         case 'shieldBreak':
           sfx.shieldBreak();
-          if (e.side === 'player') toast(`Щит сломан! Восстановится через ${battle.loadout.shield.brokenCooldownMs / 1000} с`, 'bad');
-          else toast('Щит врага разбит!', 'good');
+          if (e.side === 'player') {
+            const s = battle.loadout.shield.brokenCooldownMs / 1000;
+            toast(tr(`Щит сломан! Восстановится через ${s} с`, `Shield broken! Restores in ${s} s`), 'bad');
+          }
+          else toast(tr('Щит врага разбит!', 'Enemy shield shattered!'), 'good');
           break;
         case 'reject':
+          // жест распознан, но движок отказал: причина из движка, повторы одной причины сливаются
           sfx.reject();
           toast(
             `${FAIL_BADGE[e.kind].icon} ${e.name}: ${e.reason}`,
-            e.kind === 'interrupted' ? 'bad' : 'info',
+            e.kind === 'interrupted' || e.kind === 'stunned' ? 'bad' : 'info',
+            `reject:${e.spell ?? e.name}:${e.kind}`,
           );
           break;
         case 'interrupt':
-          toast(e.side === 'player' ? 'Заряд сбит ветром!' : 'Каст врага сбит!', e.side === 'player' ? 'bad' : 'good');
+          if (e.side === 'player') toast(`${FAIL_BADGE.interrupted.icon} ${tr('Заряд сбит ветром!', 'Charge knocked out by wind!')}`, 'bad', 'reject:fireball:interrupted');
+          else toast(tr('Каст врага сбит!', 'Enemy cast interrupted!'), 'good', 'enemyInterrupted');
           break;
         case 'reflect':
-          if (e.side === 'player') toast(`Щит врага отразил ${e.amount} урона`, 'bad');
+          if (e.side === 'player') toast(tr(`Щит врага отразил ${e.amount} урона`, `Enemy shield reflected ${e.amount} damage`), 'bad');
           break;
         case 'enrage':
-          toast(`${level.enemyName} в ярости! Вторая фаза`, 'bad');
+          toast(tr(`${level.enemyName} в ярости! Вторая фаза`, `${level.enemyName} is enraged! Phase two`), 'bad');
+          break;
+        case 'channelStart':
+          sfx.enemyTelegraph();
+          once('channel', tr('🌀 Он готовит сильную атаку — сбей её ветром!', '🌀 He is preparing a strong attack — knock it out with wind!'), 'bad');
+          break;
+        case 'channelBroken':
+          sfx.shieldBreak();
+          if (layout) vfx.floatText(layout.enemy, tr('СОРВАНО!', 'BROKEN!'), '#b6f5d8');
+          once('channelBroken', tr('💫 Подготовка сорвана — он оглушён!', '💫 Preparation broken — he is stunned!'), 'good');
+          break;
+        case 'armorBreak':
+          sfx.shieldBreak();
+          once('armor', tr('🔥 Броня растаяла — атакуй!', '🔥 Armor melted — attack!'), 'good');
+          break;
+        case 'armorRestored':
+          sfx.block();
+          break;
+        case 'duelWindup':
+          sfx.enemyTelegraph();
+          once('duel', tr('⚔️ Выпад! Сожми кулак в последний миг — парируй', '⚔️ Lunge! Make a fist at the last moment — parry'), 'bad');
+          break;
+        case 'exposed':
+          if (layout) vfx.floatText(layout.enemy, tr('ОТКРЫТ!', 'EXPOSED!'), '#f2c35b');
+          once('exposed', tr('🎯 Противник открыт!', '🎯 Opponent exposed!'), 'good');
           break;
         case 'end': {
-          phaseNow = 'end';
+          clock.end();
           setPhase('end');
           const won = e.winner === 'player';
           if (won) sfx.victory();
           else sfx.defeat();
           if (link && !won && !remoteEnded) link.sendDefeat();
+          const hpLeft = battle.player.hp / battle.player.maxHp;
+          const saveFeats = () =>
+            updateSave((sv) => {
+              const f = { ...EMPTY_FEATS, ...sv.feats };
+              const campaignWin = won && setup.kind === 'campaign';
+              return {
+                feats: {
+                  combos: f.combos + feats.combos,
+                  parries: f.parries + feats.parries,
+                  runes: [...new Set([...f.runes, ...feats.runes])],
+                  noShieldWins: f.noShieldWins + (campaignWin && !feats.shieldUsed ? 1 : 0),
+                  maxMutatorsWin: campaignWin ? Math.max(f.maxMutatorsWin, setup.mutators.length) : f.maxMutatorsWin,
+                  dailyDays:
+                    setup.kind === 'daily' && !f.dailyDays.includes(daily.id) ? [...f.dailyDays, daily.id].slice(-60) : f.dailyDays,
+                },
+              };
+            });
+          if (run && won) {
+            // волна пройдена — следующая начнётся с перенесённым HP
+            toast(tr(`🗼 Волна ${run.wave} пройдена! +${SURVIVAL.healBetween} HP`, `🗼 Wave ${run.wave} cleared! +${SURVIVAL.healBetween} HP`), 'good');
+            endTimer = window.setTimeout(() => {
+              saveFeats();
+              useGame.getState().nextWave(Math.min(battle.player.maxHp, battle.player.hp + SURVIVAL.healBetween), battle.t);
+            }, END_DELAY_MS);
+            break;
+          }
           endTimer = window.setTimeout(() => {
+            saveFeats();
             const sum = stats.summary();
+            const wavesCleared = run ? run.wave - 1 : undefined;
             const reward =
               setup.kind === 'campaign'
-                ? applyBattleResult(level.id, won, sum.accuracy, battle.t)
-                : applyOnlineResult(won, sum.accuracy, level.reward, online);
+                ? applyBattleResult(level.id, won, sum.accuracy, battle.t, hpLeft, mods.reward)
+                : run
+                  ? applySurvivalResult(wavesCleared!, sum.accuracy)
+                  : setup.kind === 'daily'
+                    ? applyDailyResult(daily.id, won, sum.accuracy, level.reward)
+                    : applyOnlineResult(won, sum.accuracy, level.reward, online);
             const score = setup.kind === 'daily' ? dailyScore(won, sum.accuracy, battle.t) : undefined;
             if (score !== undefined) {
               updateSave((sv) =>
@@ -267,8 +414,8 @@ export function BattleScreen() {
               );
             }
             recordSession({ mode: setup.kind, ...sum });
-            // в глобальный лидерборд — фоном, без ожидания (dev-сессии и тесты не публикуем)
-            if (!isDev) void import('../../net/leaderboard')
+            // в глобальный лидерборд — фоном, без ожидания (dev-сессии, тесты и выживание не публикуем)
+            if (!isDev && setup.kind !== 'survival') void import('../../net/leaderboard')
               .then(({ submitResult }) =>
                 submitResult({
                   nickname: useSave.getState().nickname,
@@ -282,12 +429,15 @@ export function BattleScreen() {
               )
               .catch(() => {});
             finishBattle({
-              level: level.id,
+              level: run ? run.wave : level.id,
               mode: setup.kind,
               opponent: level.enemyName,
               dailyScore: score,
+              wavesCleared,
+              mutators: setup.kind === 'campaign' ? setup.mutators : undefined,
+              hpLeft,
               won,
-              durationMs: battle.t,
+              durationMs: (run?.durationMs ?? 0) + battle.t,
               ...sum,
               ...reward,
             });
@@ -300,12 +450,11 @@ export function BattleScreen() {
 
     // жесты всем телом: наклон — уклонение, руки вверх — медитация
     const offPose = poseEvents.on((e) => {
-      if (phaseNow !== 'fight') return;
+      if (clock.phase !== 'fight') return;
       if (e.type === 'dodge') battle.dodge();
       if (e.type === 'armsUp') battle.meditate();
     });
 
-    const start = performance.now();
     let last = start;
     let lastHud = 0;
     let lastState = 0;
@@ -313,50 +462,24 @@ export function BattleScreen() {
     let lastHand = 0;
     let raf = 0;
 
-    const computeLayout = (): VfxLayout | null => {
-      const root = rootRef.current?.getBoundingClientRect();
-      const cam = camRef.current?.getBoundingClientRect();
-      const enemy = enemyRef.current?.getBoundingClientRect();
-      if (!root || !cam || !enemy) return null;
-      const camCenter = { x: cam.left - root.left + cam.width / 2, y: cam.top - root.top + cam.height * 0.55 };
-      let hand = camCenter;
-      const snap = useGesture.getState().snap;
-      const { videoSize } = useVision.getState();
-      const h = snap?.hands[Math.max(0, snap.activeHandIdx)];
-      if (h && videoSize.width) {
-        const box = coverBox(cam.width, cam.height, videoSize.width, videoSize.height);
-        const c = [0, 5, 9, 17].reduce((a, i) => ({ x: a.x + h.raw[i].x / 4, y: a.y + h.raw[i].y / 4 }), { x: 0, y: 0 });
-        hand = {
-          x: cam.left - root.left + cam.width - (box.ox + c.x * box.dw),
-          y: cam.top - root.top + box.oy + c.y * box.dh,
-        };
-      }
-      return {
-        playerHand: hand,
-        playerCenter: hand,
-        enemy: { x: enemy.left - root.left + enemy.width / 2, y: enemy.top - root.top + enemy.height / 2 },
-        enemyRadius: enemy.width / 2,
-        shieldRadius: Math.min(cam.width, cam.height) * 0.3,
-      };
-    };
-
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
-      const dt = Math.min(50, now - last);
+      const frameDt = Math.max(0, Math.min(50, now - last));
       last = now;
-
-      if (phaseNow === 'countdown') {
-        const left = Math.ceil((countdownMs - (now - start)) / 1000);
-        setCountdown(left);
-        if (now - start >= countdownMs) {
-          phaseNow = 'fight';
-          setPhase('fight');
-        }
+      const previousPhase = clock.phase;
+      const dt = clock.advance(now);
+      if (clock.phase === 'countdown' || clock.phase === 'resuming') setCountdown(clock.countdown);
+      if (clock.phase !== previousPhase) {
+        // Жесты меню и заряд, набранный во время отсчёта, не переносятся в бой — и в онлайне тоже:
+        // иначе ладонь, поднятая на отсчёте, стартует с полным зарядом (или перезарядом).
+        if (clock.phase === 'fight') resetInput();
+        setPhase(clock.phase);
       }
+      if (!clock.frozen) vfxNow += frameDt;
 
       const snap = useGesture.getState().snap;
       const active = snap?.active ?? null;
-      if (phaseNow === 'fight') {
+      if (clock.phase === 'fight' && dt > 0) {
         // PvP: сообщаем, какой жест взводим — соперник видит «телеграф» (на этом строятся финты)
         if (link && active !== lastForming) {
           lastForming = active;
@@ -376,10 +499,10 @@ export function BattleScreen() {
         canvas.width = w;
         canvas.height = h;
       }
-      layout = computeLayout();
-      if (layout) {
-        vfx.frame(battle, layout, dt, now, {
-          active: phaseNow === 'fight' && active === 'fireball',
+      layout = computeBattleLayout(rootRef.current, camRef.current, enemyRef.current);
+      if (layout && !clock.frozen) {
+        vfx.frame(battle, layout, frameDt, vfxNow, {
+          active: clock.phase === 'fight' && active === 'fireball',
           value: snap?.charge ?? 0,
         });
       }
@@ -403,18 +526,32 @@ export function BattleScreen() {
           durability: p.shield.durability,
           shieldMax: p.shield.max,
           staff: useSave.getState().equipped.staff,
+          burning: p.burningUntil > battle.t,
         });
       }
 
       if (now - lastHud > 90) {
         lastHud = now;
+        if (toastQueue.prune(now)) setToasts([...toastQueue.items]);
         setHudTick((n) => n + 1);
       }
     };
     raf = requestAnimationFrame(loop);
 
-    const esc = (e: KeyboardEvent) => isDev && e.key === 'Escape' && go('menu');
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.repeat) return;
+      if (online) {
+        if (isDev) go('menu');
+        return;
+      }
+      e.preventDefault();
+      if (clock.phase === 'paused') resume();
+      else pause();
+    };
+    const visibility = () => { if (document.hidden) pause(); };
     addEventListener('keydown', esc);
+    document.addEventListener('visibilitychange', visibility);
+    visibility();
 
     return () => {
       cancelAnimationFrame(raf);
@@ -423,6 +560,8 @@ export function BattleScreen() {
       offBattle();
       offPose();
       removeEventListener('keydown', esc);
+      document.removeEventListener('visibilitychange', visibility);
+      controlsRef.current = null;
       gestureEngine.setDevHold(null);
       // StrictMode в dev пересоздаёт эффект — канал закрываем только при реальном уходе с экрана
       setTimeout(() => {
@@ -438,12 +577,12 @@ export function BattleScreen() {
 
   const { player, enemy, t } = battle;
   const snap = useGesture.getState().snap;
-  const active = snap?.active ?? null;
+  const active = phase === 'fight' ? snap?.active ?? null : null;
   const telegraph = battle.bot.telegraph;
   const shieldBroken = player.shield.brokenUntil > 0;
 
   return (
-    <div ref={rootRef} className={`battle arena-${level.arena}`}>
+    <div ref={rootRef} className={`battle arena-${level.arena}${phase === 'paused' || phase === 'resuming' ? ' battle-paused' : ''}`}>
       <div ref={camRef} className="battle-player">
         <CameraView className="battle-camera" staff>
           <div className="hud hud-player">
@@ -455,26 +594,40 @@ export function BattleScreen() {
               className={`bar-shield ${shieldBroken ? 'bar-broken' : ''}`}
               label={
                 shieldBroken
-                  ? `🛡️ сломан · ${((player.shield.brokenUntil - t) / 1000).toFixed(1)} с`
+                  ? `🛡️ ${tr('сломан', 'broken')} · ${((player.shield.brokenUntil - t) / 1000).toFixed(1)} ${tr('с', 's')}`
                   : `🛡️ ${Math.ceil(player.shield.durability)}`
               }
             />
-            {t < player.burningUntil && <div className="status status-burn">🔥 горишь — лёд или лечение</div>}
+            {t < player.burningUntil && (
+              <div className="status status-burn">
+                🔥 {canUseIce(battle) ? tr('горишь — лёд или лечение', 'burning — ice or healing') : tr('горишь — лечение', 'burning — heal')}
+              </div>
+            )}
+            {t < player.stunnedUntil && <div className="status">💫 {tr('оглушён', 'stunned')}</div>}
             <div className="loadout">
               {battle.loadout.staff.icon} {battle.loadout.staff.effect} · {battle.loadout.shield.icon}{' '}
               {battle.loadout.shield.name}
             </div>
+            {setup.kind === 'campaign' && setup.mutators.length > 0 && (
+              <div className="loadout">
+                ⚗️ {modifiersOf(setup.mutators).map((m) => m.icon).join(' ')} · {tr('монеты', 'coins')} +{Math.round(mods.reward * 100)}%
+              </div>
+            )}
           </div>
-          {phase === 'fight' && <HintCard />}
+          {/* один слот под камерой: взведённая поза → готовность/причина отказа, иначе подсказка жеста */}
+          {phase === 'fight' && (active ? <ArmedStatus battle={battle} active={active} charge={snap?.charge ?? 0} overcharge={snap?.overcharge ?? 0} /> : <HintCard />)}
+          {phase === 'fight' && <ComboPanel hint={battle.comboHint()} />}
           <div className="spellbar">
             {TEMPLATES.map((tpl) => {
               const cd = tpl.id === 'shield' ? 0 : Math.max(0, (player.cooldowns[tpl.id as SpellId] ?? 0) - t);
               const def = tpl.id === 'shield' ? null : SPELLS[tpl.id as SpellId];
               const noMana = def && player.mana < def.mana * (battle.loadout.staff.manaMul ?? 1);
+              const banned = tpl.id === 'shield' ? battle.shieldLocked : !!battle.allowedSpells && tpl.id !== 'heal' && !battle.allowedSpells.includes(tpl.id as SpellId);
               return (
                 <div
                   key={tpl.id}
-                  className={`spell-slot ${active === tpl.id ? 'spell-active' : ''} ${noMana || cd > 0 ? 'spell-off' : ''}`}
+                  className={`spell-slot ${active === tpl.id ? 'spell-active' : ''} ${noMana || cd > 0 || banned ? 'spell-off' : ''} ${noMana ? 'spell-nomana' : ''}`}
+                  style={cd > 0 && def ? ({ '--cd': Math.min(1, cd / def.cooldownMs) } as CSSProperties) : undefined}
                 >
                   <SpellIcon id={tpl.id} className="spell-icon" />
                   {cd > 0 && <span className="spell-cd">{(cd / 1000).toFixed(1)}</span>}
@@ -483,12 +636,6 @@ export function BattleScreen() {
               );
             })}
           </div>
-          {active === 'fireball' && phase === 'fight' && (
-            <div className="charge-meter">
-              <div className="charge-fill" style={{ transform: `scaleX(${snap?.charge ?? 0})` }} />
-              <span>Заряд — толкни ладонь к камере!</span>
-            </div>
-          )}
         </CameraView>
       </div>
 
@@ -496,15 +643,23 @@ export function BattleScreen() {
         <div className="hud hud-enemy">
           <div className="enemy-name">
             {level.boss ? '👑 ' : ''}
-            {level.enemyName} <small>· {online ? 'онлайн' : level.id ? `ур. ${level.id}` : 'бот'}</small>
+            {level.enemyName} <small>· {online
+              ? tr('онлайн', 'online')
+              : survivalWave
+                ? tr(`волна ${survivalWave}`, `wave ${survivalWave}`)
+                : level.id
+                  ? tr(`ур. ${level.id}`, `lvl ${level.id}`)
+                  : tr('бот', 'bot')}</small>
           </div>
           <Bar value={enemy.hp} max={enemy.maxHp} className="bar-hp bar-enemy" />
-          {t < enemy.slowedUntil && <div className="status">❄️ замедлен</div>}
-          {t < enemy.burningUntil && <div className="status status-burn">🔥 горит</div>}
+          {t < enemy.slowedUntil && <div className="status">❄️ {tr('замедлен', 'slowed')}</div>}
+          {t < enemy.stunnedUntil && <div className="status">💫 {tr('оглушён', 'stunned')}</div>}
+          {t < enemy.burningUntil && <div className="status status-burn">🔥 {tr('горит', 'burning')}</div>}
+          {phase !== 'countdown' && !battle.over && <TraitStatus battle={battle} />}
         </div>
         <div
           ref={enemyRef}
-          className={`enemy-portrait ${telegraph ? 'enemy-casting' : ''} ${t < enemy.frozenUntil ? 'enemy-frozen' : ''}`}
+          className={`enemy-portrait ${telegraph ? 'enemy-casting' : ''} ${t < enemy.frozenUntil ? 'enemy-frozen' : ''} ${traitState(battle)?.portrait ?? ''} ${t < enemy.stunnedUntil ? 'enemy-stunned' : ''}`}
         >
           <AssetImg
             src={ASSETS.enemy(level.portraitOf ?? level.id)}
@@ -518,7 +673,7 @@ export function BattleScreen() {
             <div className="telegraph-rune">
               <SpellIcon id={remoteForming} />
             </div>
-            <span>Соперник готовит: {TEMPLATES.find((x) => x.id === remoteForming)?.name}</span>
+            <span>{tr('Соперник готовит', 'Opponent is preparing')}: {TEMPLATES.find((x) => x.id === remoteForming)?.name}</span>
           </div>
         )}
         {telegraph && (
@@ -530,7 +685,7 @@ export function BattleScreen() {
               <SpellIcon id={telegraph.spell} />
             </div>
             <span>
-              {SPELLS[telegraph.spell].name}! {telegraph.spell === 'lightning' ? 'Щит держит только половину' : 'Подними щит — сожми кулак'}
+              {SPELLS[telegraph.spell].name}! {telegraphAdvice(battle, telegraph.spell)}
             </span>
           </div>
         )}
@@ -542,23 +697,71 @@ export function BattleScreen() {
         {toasts.map((x) => (
           <div key={x.id} className={`battle-toast toast-${x.kind}`}>
             {x.text}
+            {x.count > 1 && <small className="toast-count"> ×{x.count}</small>}
           </div>
         ))}
       </div>
 
-      {phase === 'countdown' && (
+      {!online && phase !== 'paused' && phase !== 'end' && (
+        <DwellButton className="battle-pause-trigger" allowPointer guarded onSelect={() => controlsRef.current?.pause()}>
+          ⏸ {tr('Пауза', 'Pause')} <small>Esc</small>
+        </DwellButton>
+      )}
+
+      {phase === 'paused' && (
+        <div className="battle-pause-overlay">
+          <div
+            ref={pauseDialogRef}
+            className="battle-pause-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="battle-pause-title"
+            aria-describedby="battle-pause-description"
+            onKeyDown={(e) => {
+              if (e.key !== 'Tab') return;
+              const buttons = e.currentTarget.querySelectorAll('button');
+              const first = buttons[0];
+              const last = buttons[buttons.length - 1];
+              if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+              else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+            }}
+          >
+            <span className="battle-pause-icon" aria-hidden>⏸</span>
+            <h1 id="battle-pause-title">{tr('Пауза', 'Paused')}</h1>
+            <p id="battle-pause-description">{tr('Бой остановлен. Можно передохнуть.', 'The battle is paused. Take a breather.')}</p>
+            <DwellButton className="primary" allowPointer onSelect={() => controlsRef.current?.resume()}>
+              ▶ {tr('Продолжить', 'Resume')}
+            </DwellButton>
+            <DwellButton allowPointer onSelect={() => go('menu')}>
+              {tr('Выйти в меню', 'Quit to menu')}
+            </DwellButton>
+            <small>{tr('Esc — продолжить · Выход завершит бой без награды', 'Esc — resume · Quitting ends the battle with no reward')}</small>
+          </div>
+        </div>
+      )}
+
+      {(phase === 'countdown' || phase === 'resuming') && (
         <div className="overlay-big">
-          <div className="countdown">{countdown > 0 ? countdown : 'Бой!'}</div>
+          <div className="countdown">{countdown > 0 ? countdown : tr('Бой!', 'Fight!')}</div>
           <p>
-            {level.name}: {level.enemyName}
+            {phase === 'resuming' ? tr('Приготовься — продолжаем бой', 'Get ready — resuming the battle') : `${level.name}: ${level.enemyName}`}
           </p>
+          {phase === 'countdown' && level.trait && (
+            <p className="trait-intro">
+              {TRAIT_INFO[level.trait.kind].icon} <b>{TRAIT_INFO[level.trait.kind].name}.</b> {TRAIT_INFO[level.trait.kind].intro}
+            </p>
+          )}
         </div>
       )}
       {phase === 'end' && (
         <div className="overlay-big">
-          <div className={`countdown ${battle.winner === 'player' ? 'win' : 'lose'}`}>
-            {battle.winner === 'player' ? 'Победа!' : 'Поражение'}
+          <div className={`countdown ${battle.winner === 'player' ? 'win' : 'lose'}${survivalWave && battle.winner === 'player' ? ' countdown-long' : ''}`}>
+            {battle.winner === 'player' ? survivalWave
+                ? tr(`Волна ${survivalWave} пройдена!`, `Wave ${survivalWave} cleared!`)
+                : tr('Победа!', 'Victory!')
+              : tr('Поражение', 'Defeat')}
           </div>
+          {survivalWave > 0 && battle.winner === 'player' && <p>{tr('Следующая волна', 'Next wave')} — {survivalLevel(survivalWave + 1).enemyName}</p>}
         </div>
       )}
     </div>

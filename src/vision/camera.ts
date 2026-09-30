@@ -1,3 +1,4 @@
+import { localize } from '../i18n';
 export type CameraErrorCode =
   | 'insecure'
   | 'unsupported'
@@ -24,6 +25,7 @@ const MESSAGES: Record<CameraErrorCode, string> = {
   busy: 'Камера занята другим приложением (Zoom, Meet, OBS?). Закрой его и обнови страницу.',
   unknown: 'Не удалось запустить камеру.',
 };
+localize(MESSAGES);
 
 function toCameraError(err: unknown): CameraError {
   const name = err instanceof DOMException ? err.name : '';

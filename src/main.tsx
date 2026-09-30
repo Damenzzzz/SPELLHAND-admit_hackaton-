@@ -8,6 +8,13 @@ import { useVision } from './store/visionStore';
 import { setPersonalModel } from './gestures/personal';
 import { setPalmSign } from './vision/features';
 import './styles.css';
+import { startAchievements } from './store/achievementStore';
+import { startIntentReset } from './store/intentReset';
+
+const stopAchievements = startAchievements();
+if (import.meta.hot) import.meta.hot.dispose(stopAchievements);
+const stopIntentReset = startIntentReset();
+if (import.meta.hot) import.meta.hot.dispose(stopIntentReset);
 
 setPalmSign(useSave.getState().palmSign);
 setPersonalModel(useSave.getState().personal);

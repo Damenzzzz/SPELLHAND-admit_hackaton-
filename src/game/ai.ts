@@ -40,6 +40,11 @@ export class BotAI {
     b.setShield('enemy', true);
   }
 
+  /** Особая атака противника: обычный каст не раньше чем через ms. */
+  delay(ms: number) {
+    this.nextCastAt = Math.max(this.nextCastAt, this.battle.t + ms);
+  }
+
   interrupt() {
     if (this.state !== 'telegraph') return;
     this.state = 'idle';
@@ -57,6 +62,18 @@ export class BotAI {
     // ледяная тюрьма: заморожен — не колдует и не телеграфирует
     if (t < enemy.frozenUntil) {
       this.nextCastAt = Math.max(this.nextCastAt, enemy.frozenUntil + 400);
+      return;
+    }
+
+    // оглушён «Паровым взрывом» — не колдует
+    if (t < enemy.stunnedUntil) {
+      this.nextCastAt = Math.max(this.nextCastAt, enemy.stunnedUntil + 300);
+      return;
+    }
+
+    // особая механика (подготовка, замах, оглушение) — бот ждёт
+    if (b.trait?.holdsBot) {
+      this.nextCastAt = Math.max(this.nextCastAt, t + 600);
       return;
     }
 

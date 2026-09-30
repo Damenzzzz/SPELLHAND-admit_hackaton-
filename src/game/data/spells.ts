@@ -1,4 +1,5 @@
 import type { SpellId } from '../../gestures/types';
+import { localize } from '../../i18n';
 
 export interface SpellDef {
   id: SpellId;
@@ -131,3 +132,5 @@ export const COMBAT = {
   meditateMana: 40,
   meditateCooldownMs: 20000,
 };
+
+localize(SPELLS);

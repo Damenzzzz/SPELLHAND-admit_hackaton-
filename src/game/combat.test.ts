@@ -259,7 +259,7 @@ describe('стихии и комбо', () => {
     expect(b.player.hp).toBe(100);
   });
 
-  it('лёд → молния за 1.5 с = «Шторм» с бонусом', () => {
+  it('лёд → молния в окне = «Шторм» с бонусом', () => {
     const b = new Battle(LEVEL_BY_ID[1], loadout, seeded());
     const combos: string[] = [];
     b.on((e) => e.type === 'comboCast' && combos.push(e.name));

@@ -1,6 +1,7 @@
 import type { GestureEvent } from '../gestures/matcher';
 import type { GestureId } from '../gestures/types';
 import { adviceFor } from './data/hints';
+import { tr } from '../i18n';
 
 export interface SpellStat {
   count: number;
@@ -16,9 +17,18 @@ export interface ErrorStat {
 
 export interface BattleResult {
   level: number;
-  mode: 'campaign' | 'online' | 'ghost' | 'daily';
+  mode: 'campaign' | 'online' | 'ghost' | 'daily' | 'survival';
   /** Очки испытания дня. */
   dailyScore?: number;
+  /** Башня выживания: пройдено волн. */
+  wavesCleared?: number;
+  /** Кампания: звёзды за бой и сколько из них новых. */
+  stars?: number;
+  newStars?: number;
+  /** Включённые мутаторы кампании. */
+  mutators?: string[];
+  /** Доля HP игрока в конце боя. */
+  hpLeft?: number;
   /** Ник соперника (онлайн) или имя врага. */
   opponent: string;
   won: boolean;
@@ -94,11 +104,11 @@ export class BattleStats {
       this.addError(e.id, e.text, e.gesture);
     } else if (e.type === 'overcharge') {
       this.failures++;
-      this.addError('fireball_overcharge', 'Перезаряд — шар взорвался в руке', 'fireball');
+      this.addError('fireball_overcharge', tr('Перезаряд — шар взорвался в руке', 'Overcharge — the ball exploded in your hand'), 'fireball');
     } else if (e.type === 'runeFail') {
       this.failures++;
       // руны не жесты из шаблонов — в статистике относим к молнии «рисования» по умолчанию
-      this.addError('rune_fail', 'Руна не распознана', 'lightning');
+      this.addError('rune_fail', tr('Руна не распознана', 'Rune not recognized'), 'lightning');
     }
   }
 

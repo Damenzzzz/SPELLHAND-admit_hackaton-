@@ -1,16 +1,17 @@
 import type { SessionRecord } from '../game/progress';
+import { tr } from '../i18n';
 
 /** Точность по сессиям: линия + точки, 0–100%. Без библиотек — чистый SVG. */
 export function AccuracyChart({ history, width = 420, height = 150 }: { history: SessionRecord[]; width?: number; height?: number }) {
   const data = history.slice(-20);
-  if (data.length < 2) return <p className="muted">Сыграй пару боёв — здесь появится график точности.</p>;
+  if (data.length < 2) return <p className="muted">{tr('Сыграй пару боёв — здесь появится график точности.', 'Play a couple of battles — your accuracy chart will appear here.')}</p>;
   const pad = 24;
   const x = (i: number) => pad + (i * (width - pad * 2)) / (data.length - 1);
   const y = (v: number) => height - pad - v * (height - pad * 2);
   const line = data.map((s, i) => `${x(i)},${y(s.accuracy)}`).join(' ');
 
   return (
-    <svg className="acc-chart" width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Точность по сессиям">
+    <svg className="acc-chart" width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={tr('Точность по сессиям', 'Accuracy by session')}>
       {[0, 0.5, 1].map((v) => (
         <g key={v}>
           <line x1={pad} x2={width - pad} y1={y(v)} y2={y(v)} className="acc-grid" />

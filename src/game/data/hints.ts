@@ -1,4 +1,5 @@
 import type { GestureId } from '../../gestures/types';
+import { localize, tr, tx } from '../../i18n';
 
 /** Советы «что тренировать» по id ошибки (ограничения или осечки). */
 const ADVICE: Record<string, string> = {
@@ -18,6 +19,7 @@ const ADVICE: Record<string, string> = {
   rune_fail: 'Руны рисуй «пером» (сведи большой и указательный) крупно и одним движением за 1–2 секунды — фигуры в Академии.',
   fireball_overcharge: 'Полный заряд — через полторы секунды; держишь дольше двух — шар взрывается. Толкай, как только посох засиял.',
 };
+localize(ADVICE);
 
 const FINGER_RU: Record<string, string> = {
   thumb: 'большого пальца',
@@ -27,16 +29,18 @@ const FINGER_RU: Record<string, string> = {
   pinky: 'мизинца',
 };
 
+const FINGER_EN: Record<string, string> = { thumb: 'thumb', index: 'index finger', middle: 'middle finger', ring: 'ring finger', pinky: 'pinky' };
+
 export function adviceFor(errorId: string): string {
   if (ADVICE[errorId]) return ADVICE[errorId];
   const [finger, state] = errorId.split('_');
   if (FINGER_RU[finger] && state === 'extended') {
-    return `Тренируй выпрямление ${FINGER_RU[finger]} — в Академии смотри на чек-лист.`;
+    return tr(`Тренируй выпрямление ${FINGER_RU[finger]} — в Академии смотри на чек-лист.`, `Practice straightening your ${FINGER_EN[finger]} — watch the checklist in the Academy.`);
   }
   if (FINGER_RU[finger] && state === 'curled') {
-    return `Тренируй сгибание ${FINGER_RU[finger]}: прижимай его к ладони плотнее.`;
+    return tr(`Тренируй сгибание ${FINGER_RU[finger]}: прижимай его к ладони плотнее.`, `Practice curling your ${FINGER_EN[finger]}: press it tighter to the palm.`);
   }
-  return 'Повтори жест в Академии, глядя на призрачную руку.';
+  return tx('Повтори жест в Академии, глядя на призрачную руку.');
 }
 
 /** Какой жест тренировать по ошибке — для кнопки «В академию». */

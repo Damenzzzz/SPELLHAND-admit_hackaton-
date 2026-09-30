@@ -1,5 +1,6 @@
 import { dist, ramp, type FingerId, type HandFeatures } from '../vision/features';
 import type { Constraint, GestureId, GestureTemplate } from './types';
+import { localize } from '../i18n';
 
 // --- словарь для текстов ---
 const NAME: Record<FingerId, { nom: string; acc: string }> = {
@@ -241,3 +242,5 @@ export const TEMPLATE_BY_ID = Object.fromEntries(TEMPLATES.map((t) => [t.id, t])
   GestureId,
   GestureTemplate
 >;
+
+localize(TEMPLATES);

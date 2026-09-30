@@ -1,25 +1,25 @@
 import { useState } from 'react';
 import { LEVELS, LEVEL_BY_ID } from '../../game/data/levels';
+import { modifiersOf } from '../../game/data/modifiers';
+import { starString } from '../../game/stars';
+import { useSave } from '../../store/saveStore';
 import { TEMPLATES, TEMPLATE_BY_ID } from '../../gestures/templates';
 import { useGame } from '../../store/gameStore';
 import { CoinBadge } from '../CoinBadge';
 import { SpellIcon } from '../SpellIcon';
 import { DwellButton } from '../DwellButton';
 import { ScreenShell } from '../ScreenShell';
+import { plural, tr } from '../../i18n';
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
-function times(n: number) {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return `${n} раза`;
-  return `${n} раз`;
-}
+const times = (n: number) => plural(n, ['раз', 'раза', 'раз'], ['time', 'times']);
 
 /** Итоги боя: точность, качество по спеллам, топ-3 ошибки и что тренировать. */
 export function Results() {
-  const { lastResult: r, startBattle, go, openAcademy } = useGame();
+  const { lastResult: r, startBattle, startSurvival, go, openAcademy } = useGame();
   const [shared, setShared] = useState<string | null>(null);
+  const survivalBest = useSave((s) => s.survivalBest ?? 0);
   if (!r) return null;
   const campaign = r.mode === 'campaign';
   const level = LEVEL_BY_ID[r.level];
@@ -29,42 +29,67 @@ export function Results() {
   return (
     <ScreenShell className="results">
       <CoinBadge />
-      <h1 className={`results-title ${r.won ? 'win' : 'lose'}`}>{r.won ? 'Победа!' : 'Поражение'}</h1>
+      <h1 className={`results-title ${r.won || r.mode === 'survival' ? 'win' : 'lose'}`}>
+        {r.mode === 'survival'
+          ? `🗼 ${tr('Волн', 'Waves')}: ${r.wavesCleared ?? 0}`
+          : r.won
+            ? tr('Победа!', 'Victory!')
+            : tr('Поражение', 'Defeat')}
+      </h1>
       <p className="menu-sub">
         {campaign
-          ? `Уровень ${level.id} · ${level.name} · ${level.enemyName}`
-          : r.mode === 'online'
-            ? `Онлайн-дуэль с игроком «${r.opponent}»`
+          ? `${tr('Уровень', 'Level')} ${level.id} · ${level.name} · ${level.enemyName}`
+          : r.mode === 'survival'
+            ? tr(
+                `Башня выживания · пройдено волн: ${r.wavesCleared ?? 0} · рекорд: ${survivalBest}`,
+                `Survival Tower · waves cleared: ${r.wavesCleared ?? 0} · best: ${survivalBest}`,
+              )
+            : r.mode === 'online'
+            ? tr(`Онлайн-дуэль с игроком «${r.opponent}»`, `Online duel with “${r.opponent}”`)
             : r.mode === 'daily'
-              ? `Испытание дня · ${r.dailyScore ?? 0} очков`
-              : 'Соперник не нашёлся — бой с Призраком мага'}
+              ? tr(`Испытание дня · ${r.dailyScore ?? 0} очков`, `Daily challenge · ${r.dailyScore ?? 0} pts`)
+              : tr('Соперник не нашёлся — бой с Призраком мага', 'No opponent found — battle with the Mage Ghost')}
       </p>
+
+      {campaign && r.won && r.stars !== undefined && (
+        <div className="results-stars" aria-label={tr(`Звёзд: ${r.stars} из 3`, `Stars: ${r.stars} of 3`)}>
+          {starString(r.stars)}
+          {r.newStars ? <small> +{r.newStars} ★ {tr('новых', 'new')}</small> : null}
+        </div>
+      )}
+      {campaign && r.mutators && r.mutators.length > 0 && (
+        <p className="muted">⚗️ {tr('Мутаторы', 'Mutators')}: {modifiersOf(r.mutators).map((m) => `${m.icon} ${m.text}`).join(' · ')}</p>
+      )}
 
       <div className="results-grid">
         <section className="card">
           <div className="stat-row">
             <div className="stat">
               <b>{pct(r.accuracy)}</b>
-              <span>точность жестов</span>
+              <span>{tr('точность жестов', 'gesture accuracy')}</span>
             </div>
             <div className="stat">
               <b>
                 {r.casts}/{r.attempts}
               </b>
-              <span>удачных попыток</span>
+              <span>{tr('удачных попыток', 'successful attempts')}</span>
             </div>
             <div className="stat">
-              <b>{(r.durationMs / 1000).toFixed(0)} с</b>
-              <span>длительность</span>
+              <b>
+                {(r.durationMs / 1000).toFixed(0)} {tr('с', 's')}
+              </b>
+              <span>{tr('длительность', 'duration')}</span>
             </div>
             <div className="stat">
               <b className="gold">+{r.coins}</b>
-              <span>{r.won ? (r.firstWin ? 'монет' : 'монет (повтор ×0.5)') : 'монет'}</span>
+              <span>{r.won && !r.firstWin && (campaign || r.mode === 'daily') ? tr('монет (повтор ×0.5)', 'coins (replay ×0.5)') : tr('монет', 'coins')}</span>
             </div>
           </div>
-          {r.newRecord && <div className="record-badge">🏆 Новый рекорд уровня!</div>}
+          {r.newRecord && (
+            <div className="record-badge">{r.mode === 'survival' ? tr('🏆 Новый рекорд башни!', '🏆 New tower record!') : tr('🏆 Новый рекорд уровня!', '🏆 New level record!')}</div>
+          )}
 
-          <h3>Качество по заклинаниям</h3>
+          <h3>{tr('Качество по заклинаниям', 'Quality by spell')}</h3>
           <div className="quality-list">
             {TEMPLATES.filter((t) => r.perSpell[t.id]).map((t) => {
               const s = r.perSpell[t.id]!;
@@ -80,12 +105,12 @@ export function Results() {
                 </div>
               );
             })}
-            {!Object.keys(r.perSpell).length && <p className="muted">Ни одного успешного каста — загляни в Академию.</p>}
+            {!Object.keys(r.perSpell).length && <p className="muted">{tr('Ни одного успешного каста — загляни в Академию.', 'No successful casts — visit the Academy.')}</p>}
           </div>
         </section>
 
         <section className="card">
-          <h3>Топ ошибок</h3>
+          <h3>{tr('Топ ошибок', 'Top errors')}</h3>
           {r.topErrors.length ? (
             <ol className="error-list">
               {r.topErrors.map((e) => (
@@ -98,11 +123,11 @@ export function Results() {
               ))}
             </ol>
           ) : (
-            <p className="muted">Ошибок нет — чистая работа!</p>
+            <p className="muted">{tr('Ошибок нет — чистая работа!', 'No errors — clean work!')}</p>
           )}
           {r.advice.length > 0 && (
             <>
-              <h3>Что тренировать</h3>
+              <h3>{tr('Что тренировать', 'What to practice')}</h3>
               <ul className="advice-list">
                 {r.advice.map((a) => (
                   <li key={a}>{a}</li>
@@ -116,31 +141,33 @@ export function Results() {
       <nav className="results-buttons">
         {hasNext && (
           <DwellButton className="btn-primary" onSelect={() => startBattle(r.level + 1)}>
-            ⚔️ Уровень {r.level + 1}
+            ⚔️ {tr('Уровень', 'Level')} {r.level + 1}
           </DwellButton>
         )}
         {campaign ? (
-          <DwellButton onSelect={() => startBattle(r.level)}>🔁 Ещё раз</DwellButton>
+          <DwellButton onSelect={() => startBattle(r.level)}>🔁 {tr('Ещё раз', 'Retry')}</DwellButton>
         ) : r.mode === 'daily' ? (
-          <DwellButton onSelect={() => go('daily')}>📅 К испытанию дня</DwellButton>
+          <DwellButton onSelect={() => go('daily')}>📅 {tr('К испытанию дня', 'Daily challenge')}</DwellButton>
+        ) : r.mode === 'survival' ? (
+          <DwellButton onSelect={startSurvival}>🗼 {tr('Новый забег', 'New run')}</DwellButton>
         ) : (
-          <DwellButton onSelect={() => go('online')}>🔍 Новый соперник</DwellButton>
+          <DwellButton onSelect={() => go('online')}>🔍 {tr('Новый соперник', 'New opponent')}</DwellButton>
         )}
         {trainGesture && (
           <DwellButton onSelect={() => openAcademy(trainGesture)}>
-            📖 Тренировать {TEMPLATE_BY_ID[trainGesture].icon}
+            📖 {tr('Тренировать', 'Practice')} {TEMPLATE_BY_ID[trainGesture].icon}
           </DwellButton>
         )}
         <DwellButton
           onSelect={() =>
             void import('../shareCard').then(({ shareResult }) =>
-              shareResult(r).then((how) => setShared(how === 'shared' ? 'Отправлено!' : 'Картинка скачана')),
+              shareResult(r).then((how) => setShared(how === 'shared' ? tr('Отправлено!', 'Shared!') : tr('Картинка скачана', 'Image downloaded'))),
             )
           }
         >
-          📤 {shared ?? 'Поделиться'}
+          📤 {shared ?? tr('Поделиться', 'Share')}
         </DwellButton>
-        <DwellButton onSelect={() => go('menu')}>🏠 Меню</DwellButton>
+        <DwellButton onSelect={() => go('menu')}>🏠 {tr('Меню', 'Menu')}</DwellButton>
       </nav>
     </ScreenShell>
   );

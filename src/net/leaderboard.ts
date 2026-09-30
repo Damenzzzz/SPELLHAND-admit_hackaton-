@@ -6,7 +6,7 @@ import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools/pure
  * NIP-78 (kind 30078) на публичных Nostr-релеях с тегом игры. Ключ устройства создаётся
  * анонимно и хранится в localStorage (аналог anonymous sign-in). Античита нет (хакатон).
  */
-const RELAYS = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net', 'wss://relay.mostr.pub'];
+const RELAYS = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://relay.primal.net'];
 const TAG = 'spellhand-lb-v1';
 const KIND = 30078;
 const SK_KEY = 'spellhand.nostr.sk';

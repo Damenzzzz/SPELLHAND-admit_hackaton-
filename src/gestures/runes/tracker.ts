@@ -1,6 +1,7 @@
 import { dist, type HandFeatures } from '../../vision/features';
 import { recognize, type Pt } from './pdollar';
 import { RUNES, RUNE_TEMPLATES, type RuneId } from './runes';
+import { tr } from '../../i18n';
 
 export const RUNE_CONFIG = {
   /** Перо: большой и указательный сведены (÷palmSize), средний выпрямлен (не кулак). */
@@ -120,18 +121,25 @@ export class RuneTracker {
     });
 
     if (duration < C.minMs) return null; // случайное касание пальцев — не попытка
-    if (duration > C.maxMs) return fail('Слишком долго — рисуй руну одним движением за 1–2 секунды');
+    if (duration > C.maxMs) return fail(tr('Слишком долго — рисуй руну одним движением за 1–2 секунды', 'Too slow — draw the rune in one 1–2 second stroke'));
     let length = 0;
     for (let i = 1; i < stroke.length; i++) length += Math.hypot(stroke[i].x - stroke[i - 1].x, stroke[i].y - stroke[i - 1].y);
-    if (stroke.length < 3 || length < C.minPathPalms * this.palm) return fail('Слишком мелко — рисуй руну крупнее');
+    if (stroke.length < 3 || length < C.minPathPalms * this.palm) return fail(tr('Слишком мелко — рисуй руну крупнее', 'Too small — draw the rune bigger'));
 
     const r = recognize(stroke, RUNE_TEMPLATES);
     if (!r) return null;
     if (r.score >= C.accept && r.margin >= C.margin) return { type: 'rune', rune: r.id, score: r.score, t: now };
     if (r.score >= C.nearMiss) {
       const rune = RUNES[r.id];
-      return fail(`Похоже на «${rune.name}» (${rune.howTo.toLowerCase()}) — нарисуй чётче и замкни фигуру`, r.id, r.score);
+      return fail(
+        tr(
+          `Похоже на «${rune.name}» (${rune.howTo.toLowerCase()}) — нарисуй чётче и замкни фигуру`,
+          `Looks like “${rune.name}” (${rune.howTo.toLowerCase()}) — draw it cleaner and close the shape`,
+        ),
+        r.id,
+        r.score,
+      );
     }
-    return fail('Не похоже ни на одну руну — посмотри фигуры в Академии', null, r.score);
+    return fail(tr('Не похоже ни на одну руну — посмотри фигуры в Академии', 'Does not match any rune — see the shapes in the Academy'), null, r.score);
   }
 }

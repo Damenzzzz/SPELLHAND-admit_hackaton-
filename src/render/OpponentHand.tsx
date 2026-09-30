@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { remoteHand } from '../net/session';
 import { BONES } from './HandOverlay';
+import { tr } from '../i18n';
 
 const STALE_MS = 600;
 
@@ -44,5 +45,5 @@ export function OpponentHand({ size = 170 }: { size?: number }) {
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, [size]);
-  return <canvas ref={ref} className="opponent-hand" style={{ width: size, height: size }} aria-label="Рука соперника" />;
+  return <canvas ref={ref} className="opponent-hand" style={{ width: size, height: size }} aria-label={tr('Рука соперника', 'Opponent hand')} />;
 }

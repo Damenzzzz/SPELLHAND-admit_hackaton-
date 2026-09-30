@@ -1,16 +1,28 @@
 import type { GestureId, SpellId } from '../gestures/types';
 import { BotAI } from './ai';
 import type { LevelDef } from './data/levels';
-import { COMBO_WINDOW_MS, COMBOS, STATUS } from './data/combos';
+import { COMBO_CONFIG, COMBOS, STATUS, type ComboDef, type ComboId } from './data/combos';
 import { COMBO, gradeOf, type GradeId } from './data/grades';
 import { COMBAT, RUNE_COMBAT, SPELLS } from './data/spells';
 import { RUNES, type RuneId } from '../gestures/runes/runes';
 import type { Loadout } from './economy';
+import { TraitEngine } from './traits';
+import { tr } from '../i18n';
 
 export type Side = 'player' | 'enemy';
 
 /** Жест распознан, но заклинание не готово: перезарядка / мана / заряд сбит. */
-export type RejectKind = 'cooldown' | 'mana' | 'interrupted';
+/**
+ * Причина отказа движка: перезарядка / мана / заряд сбит / запрещено модификатором / оглушение /
+ * щит сломан или недоступен. Жест при этом распознан — это не ошибка формы руки.
+ */
+export type RejectKind = 'cooldown' | 'mana' | 'interrupted' | 'banned' | 'stunned';
+
+/** Почему заклинание сейчас не сработает (или null — готово). Один источник для каста и HUD. */
+export interface CastBlock {
+  kind: RejectKind;
+  reason: string;
+}
 
 export interface ShieldState {
   up: boolean;
@@ -40,6 +52,8 @@ export interface Fighter {
   frozenUntil: number;
   /** Горение: до какого момента (огонь, снимается льдом или лечением). */
   burningUntil: number;
+  /** Оглушение («Паровой взрыв»): не атакует до этого момента. */
+  stunnedUntil: number;
 }
 
 export interface Projectile {
@@ -61,6 +75,14 @@ export interface Projectile {
   burn?: boolean;
   /** Заморозка цели (руна «Ледяная тюрьма»), действует сквозь щит. */
   freezeMs?: number;
+  /** Особая атака противника: усиленная подготовкой или парируемый выпад дуэлянта. */
+  tag?: 'channel' | 'duelist';
+  /** Завершающая атака комбинации стихий. */
+  combo?: ComboId;
+  /** «Паровой взрыв»: эффект при попадании в горящую цель. */
+  steam?: { bonusDamage: number; stunMs: number };
+  /** PvP: id снаряда у отправителя — защита от повторного применения и ответ о результате. */
+  netId?: number;
 }
 
 export type BattleEvent =
@@ -83,7 +105,13 @@ export type BattleEvent =
   | { type: 'reject'; name: string; spell?: GestureId; reason: string; kind: RejectKind }
   | { type: 'runeCast'; rune: RuneId; score: number; damage: number; projectile?: Projectile }
   | { type: 'frozen'; side: Side; ms: number }
-  | { type: 'comboCast'; name: string; bonus: number }
+  /** Комбинация стихий засчитана при касте. conditional — эффект решится при попадании («Паровой взрыв»). */
+  | { type: 'comboCast'; id: ComboId; name: string; bonus: number; conditional: boolean }
+  /** Условный эффект комбинации сработал при попадании. by — чья атака. */
+  | { type: 'comboEffect'; id: ComboId; by: Side; bonus: number; stunMs: number; netId?: number }
+  /** Условие не выполнено: атака сработала как обычная. */
+  | { type: 'comboFizzle'; id: ComboId; by: Side; reason: 'notBurning' | 'blocked' | 'dodged'; netId?: number }
+  | { type: 'stunned'; side: Side; ms: number }
   | { type: 'burn'; side: Side; on: boolean }
   | { type: 'blownAway'; count: number }
   | { type: 'dodge' }
@@ -97,9 +125,32 @@ export type BattleEvent =
   | { type: 'interrupt'; side: Side }
   | { type: 'reflect'; side: Side; amount: number }
   | { type: 'enrage' }
+  // особые механики противников (src/game/traits.ts)
+  | { type: 'channelStart'; ms: number }
+  | { type: 'channelBroken'; stunMs: number }
+  | { type: 'channelRelease' }
+  | { type: 'armorBreak'; ms: number }
+  | { type: 'armorRestored' }
+  | { type: 'duelWindup'; ms: number }
+  | { type: 'exposed'; ms: number }
+  | { type: 'exposedEnd' }
   | { type: 'end'; winner: Side };
 
 type Listener = (e: BattleEvent) => void;
+
+export interface ComboOption {
+  def: ComboDef;
+  /** ready — можно; cooldown — перезарядка рецепта или заклинания; banned — запрещено модификатором; noTarget — цель не горит. */
+  status: 'ready' | 'cooldown' | 'banned' | 'noTarget';
+  cooldownMs: number;
+}
+
+export interface ComboHint {
+  first: SpellId;
+  leftMs: number;
+  windowMs: number;
+  options: ComboOption[];
+}
 
 function makeFighter(hp: number, shield: Omit<ShieldState, 'up' | 'brokenUntil' | 'durability' | 'upAt'>): Fighter {
   return {
@@ -115,6 +166,7 @@ function makeFighter(hp: number, shield: Omit<ShieldState, 'up' | 'brokenUntil' 
     interruptedUntil: 0,
     frozenUntil: 0,
     burningUntil: 0,
+    stunnedUntil: 0,
   };
 }
 
@@ -128,6 +180,8 @@ export class Battle {
   winner: Side | null = null;
   enraged = false;
   readonly bot: BotAI;
+  /** Особая механика противника уровня (не в PvP). */
+  readonly trait: TraitEngine | null;
 
   private nextId = 1;
   private listeners = new Set<Listener>();
@@ -152,6 +206,7 @@ export class Battle {
       reflect: level.boss?.reflect ?? 0,
     });
     this.bot = new BotAI(this);
+    this.trait = !remote && level.trait ? new TraitEngine(this, level.trait) : null;
   }
 
   on(fn: Listener) {
@@ -170,8 +225,21 @@ export class Battle {
   /** Итоговый урон игрока: база × качество жеста × посох. */
   private lastPlayerHitAt = -Infinity;
 
-  /** Испытание дня может ограничить заклинания игрока. */
+  /** Испытание дня и мутаторы могут ограничить заклинания игрока. */
   allowedSpells: SpellId[] | null = null;
+  /** Множитель урона игрока (мутатор «стеклянная пушка»). */
+  playerDmgMul = 1;
+  /** Мутатор «без щита»: игрок не может поднять щит. */
+  shieldLocked = false;
+  /** Бот атакует сам. Обучение выключает его и управляет снарядами врага вручную. */
+  botEnabled = true;
+
+  /** Применяет сводный эффект модификаторов (уровень врага уже изменён при создании). */
+  applyModifiers(m: { allowed: SpellId[] | null; playerDmgMul: number; noShield: boolean }) {
+    this.allowedSpells = m.allowed;
+    this.playerDmgMul = m.playerDmgMul;
+    this.shieldLocked = m.noShield;
+  }
 
   /** Серия удачных кастов подряд (обрывается «слабым» кастом или ошибкой жеста). */
   combo = 0;
@@ -183,7 +251,7 @@ export class Battle {
     const staff = this.loadout.staff;
     const mul = (staff.spellMul?.[spell] ?? 1) * (staff.allMul ?? 1);
     const combo = 1 + COMBO.stepBonus * Math.min(this.combo, COMBO.maxSteps);
-    return Math.round(base * (COMBAT.qualityBase + COMBAT.qualityK * quality) * gradeOf(quality).mul * combo * mul);
+    return Math.round(base * (COMBAT.qualityBase + COMBAT.qualityK * quality) * gradeOf(quality).mul * combo * mul * this.playerDmgMul);
   }
 
   // жесты телом
@@ -197,8 +265,9 @@ export class Battle {
   dodge(): boolean {
     if (this.over) return false;
     if (this.t < this.dodgeReadyAt) {
-      const reason = `перезарядка ${((this.dodgeReadyAt - this.t) / 1000).toFixed(1)} с`;
-      this.emit({ type: 'reject', name: 'Уклонение', kind: 'cooldown', reason });
+      const s = ((this.dodgeReadyAt - this.t) / 1000).toFixed(1);
+      const reason = tr(`перезарядка ${s} с`, `cooldown ${s} s`);
+      this.emit({ type: 'reject', name: tr('Уклонение', 'Dodge'), kind: 'cooldown', reason });
       return false;
     }
     this.dodgeUntil = this.t + COMBAT.dodgeIframesMs;
@@ -211,8 +280,9 @@ export class Battle {
   meditate(): boolean {
     if (this.over) return false;
     if (this.t < this.meditateReadyAt) {
-      const reason = `перезарядка ${Math.ceil((this.meditateReadyAt - this.t) / 1000)} с`;
-      this.emit({ type: 'reject', name: 'Медитация', kind: 'cooldown', reason });
+      const s = Math.ceil((this.meditateReadyAt - this.t) / 1000);
+      const reason = tr(`перезарядка ${s} с`, `cooldown ${s} s`);
+      this.emit({ type: 'reject', name: tr('Медитация', 'Meditation'), kind: 'cooldown', reason });
       return false;
     }
     const before = this.player.mana;
@@ -222,8 +292,14 @@ export class Battle {
     return true;
   }
 
-  /** Последнее заклинание игрока — для комбо. */
-  private lastCast: { spell: SpellId; t: number } | null = null;
+  /** Комбинации стихий: первое заклинание пары (принятое движком) и перезарядки рецептов. */
+  comboChain: { spell: SpellId; t: number } | null = null;
+  comboReadyAt: Partial<Record<ComboId, number>> = {};
+  /** PvP: состояние горения соперника (из его state) — для подсказки «Парового взрыва». */
+  remoteBurning = false;
+  /** PvP: уже применённые входящие касты и ожидающие ответа «Паровые взрывы». */
+  private seenCasts = new Set<number>();
+  private sentSteam = new Map<number, ComboId>();
 
   /** Руны делят один кулдаун. */
   runeReadyAt = 0;
@@ -235,14 +311,19 @@ export class Battle {
   playerRune(rune: RuneId, score: number): boolean {
     if (this.over) return false;
     const def = RUNES[rune];
+    if (this.t < this.player.stunnedUntil) {
+      this.emit({ type: 'reject', name: def.name, kind: 'stunned', reason: tr('Оглушён', 'Stunned') });
+      return false;
+    }
     if (this.t < this.runeReadyAt) {
-      const reason = `Перезарядка рун ${((this.runeReadyAt - this.t) / 1000).toFixed(1)} с`;
+      const s = ((this.runeReadyAt - this.t) / 1000).toFixed(1);
+      const reason = tr(`Перезарядка рун ${s} с`, `Rune cooldown ${s} s`);
       this.emit({ type: 'reject', name: def.name, kind: 'cooldown', reason });
       return false;
     }
     const cost = RUNE_COMBAT.mana * (this.loadout.staff.manaMul ?? 1);
     if (this.player.mana < cost) {
-      this.emit({ type: 'reject', name: def.name, kind: 'mana', reason: `Нужно ${Math.round(cost)} маны` });
+      this.emit({ type: 'reject', name: def.name, kind: 'mana', reason: tr(`Нужно ${Math.round(cost)} маны`, `Need ${Math.round(cost)} mana`) });
       return false;
     }
     this.player.mana -= cost;
@@ -253,7 +334,7 @@ export class Battle {
         spell,
         from: 'player',
         to: 'enemy',
-        damage: Math.round(damage * power),
+        damage: Math.round(damage * power * this.playerDmgMul),
         quality: score,
         spawnT: this.t,
         hitT: this.t + travelMs,
@@ -301,41 +382,79 @@ export class Battle {
   }
 
   /** Каст игрока по событию распознавателя. Возвращает false, если отклонён. */
+  /**
+   * Почему атакующее заклинание сейчас не сработает. followUp — 2-й/3-й осколок льда (без маны
+   * и перезарядки). Тот же порядок проверок, что и в playerCast: HUD показывает ровно то,
+   * что скажет движок при касте.
+   */
+  castBlocker(spell: SpellId, followUp = false): CastBlock | null {
+    if (this.allowedSpells && !this.allowedSpells.includes(spell)) {
+      return { kind: 'banned', reason: tr('В этом бою заклинание запрещено', 'This spell is banned in this battle') };
+    }
+    if (this.t < this.player.stunnedUntil) {
+      const s = ((this.player.stunnedUntil - this.t) / 1000).toFixed(1);
+      return { kind: 'stunned', reason: tr(`Оглушён ${s} с`, `Stunned ${s} s`) };
+    }
+    if (followUp) return null;
+    const readyAt = this.player.cooldowns[spell] ?? 0;
+    if (this.t < readyAt) {
+      const s = ((readyAt - this.t) / 1000).toFixed(1);
+      return { kind: 'cooldown', reason: tr(`Перезарядка ${s} с`, `Cooldown ${s} s`) };
+    }
+    if (spell === 'fireball' && this.t < this.player.interruptedUntil) {
+      return { kind: 'interrupted', reason: tr('Заряд сбит ветром!', 'Charge knocked out by wind!') };
+    }
+    if (this.player.mana < SPELLS[spell].mana * (this.loadout.staff.manaMul ?? 1)) {
+      return { kind: 'mana', reason: tr('Мало маны', 'Not enough mana') };
+    }
+    return null;
+  }
+
+  /** Сколько осколков льда ещё можно выпустить в открытой серии (без маны и перезарядки). */
+  iceShardsLeft(): number {
+    if (this.t > this.iceSeries.until) return 0;
+    return Math.max(0, (SPELLS.ice.hits ?? 1) - this.iceSeries.shots);
+  }
+
+  /** Удерживаемые позы: почему щит или лечение сейчас не держатся (null — работает/готово). */
+  holdBlocker(g: 'shield' | 'heal'): CastBlock | null {
+    const p = this.player;
+    if (g === 'shield') {
+      if (this.shieldLocked) return { kind: 'banned', reason: tr('В этом бою без щита', 'No shield in this battle') };
+      if (p.shield.brokenUntil) {
+        const s = ((p.shield.brokenUntil - this.t) / 1000).toFixed(1);
+        return { kind: 'cooldown', reason: tr(`Щит сломан · ${s} с`, `Shield broken · ${s} s`) };
+      }
+      if (p.healing) return { kind: 'interrupted', reason: tr('Во время лечения щит недоступен', 'No shield while healing') };
+      return null;
+    }
+    if (p.healing) return null; // лечение уже идёт
+    const readyAt = p.cooldowns.heal ?? 0;
+    if (this.t < readyAt) {
+      const s = ((readyAt - this.t) / 1000).toFixed(1);
+      return { kind: 'cooldown', reason: tr(`Перезарядка ${s} с`, `Cooldown ${s} s`) };
+    }
+    if (p.mana < SPELLS.heal.mana * (this.loadout.staff.manaMul ?? 1)) return { kind: 'mana', reason: tr('Мало маны', 'Not enough mana') };
+    return null;
+  }
+
   playerCast(spell: SpellId, quality: number, charge: number, shard: number): boolean {
     if (this.over || spell === 'heal') return false;
-    if (this.allowedSpells && !this.allowedSpells.includes(spell)) {
-      this.emit({ type: 'reject', spell, name: SPELLS[spell].name, kind: 'interrupted', reason: 'Сегодня это заклинание запрещено' });
-      return false;
-    }
     const def = SPELLS[spell];
     const staff = this.loadout.staff;
 
     // 2-й и 3-й осколок льда — продолжение серии, без маны и кулдауна
     const iceFollowUp = spell === 'ice' && shard > 1;
+    const block = this.castBlocker(spell, iceFollowUp);
+    if (block) {
+      this.emit({ type: 'reject', spell, name: def.name, kind: block.kind, reason: block.reason });
+      return false;
+    }
     if (iceFollowUp) {
       if (this.t > this.iceSeries.until || this.iceSeries.shots >= (def.hits ?? 1)) return false;
       this.iceSeries.shots++;
     } else {
-      const readyAt = this.player.cooldowns[spell] ?? 0;
-      if (this.t < readyAt) {
-        this.emit({
-          type: 'reject',
-          spell,
-          name: SPELLS[spell].name,
-          kind: 'cooldown',
-          reason: `Перезарядка ${((readyAt - this.t) / 1000).toFixed(1)} с`,
-        });
-        return false;
-      }
-      if (spell === 'fireball' && this.t < this.player.interruptedUntil) {
-        this.emit({ type: 'reject', spell, name: SPELLS[spell].name, kind: 'interrupted', reason: 'Заряд сбит ветром!' });
-        return false;
-      }
       const cost = def.mana * (staff.manaMul ?? 1);
-      if (this.player.mana < cost) {
-        this.emit({ type: 'reject', spell, name: SPELLS[spell].name, kind: 'mana', reason: 'Мало маны' });
-        return false;
-      }
       this.player.mana -= cost;
       this.player.cooldowns[spell] = this.t + def.cooldownMs;
       if (spell === 'ice') this.iceSeries = { until: this.t + 2500, shots: 1 };
@@ -350,19 +469,14 @@ export class Battle {
     let pierce = spell === 'lightning' ? (staff.lightningPierce ?? def.shieldPierce) : def.shieldPierce;
     const slow = def.slow ? { ...def.slow, ms: def.slow.ms + (staff.slowBonusMs ?? 0) } : undefined;
 
-    // комбо: второе заклинание связки в окне после первого
-    let bonus = 0;
-    let comboBurn = false;
-    const combo = !iceFollowUp
-      ? COMBOS.find((c) => c.then === spell && this.lastCast?.spell === c.first && this.t - this.lastCast.t <= COMBO_WINDOW_MS)
-      : undefined;
-    if (combo) {
-      bonus = combo.bonusDamage;
-      pierce = Math.max(pierce, combo.pierce ?? 0);
-      comboBurn = !!combo.burn;
-      this.emit({ type: 'comboCast', name: combo.name, bonus });
-    }
-    if (!iceFollowUp) this.lastCast = { spell, t: this.t };
+    // комбинация стихий: принятый каст `then` в окне после принятого `first`.
+    // Осколки льда 2–3 — то же действие. Сработавшая пара расходуется: одна атака — одна комбинация.
+    const combo = iceFollowUp ? undefined : this.takeCombo(spell);
+    const bonus = combo?.bonusDamage ?? 0;
+    const comboBurn = !!combo?.burn;
+    if (combo?.pierce) pierce = Math.max(pierce, combo.pierce);
+    if (combo?.pierceBonus) pierce = Math.min(1, pierce + combo.pierceBonus);
+    if (combo) this.emit({ type: 'comboCast', id: combo.id, name: combo.name, bonus, conditional: !!combo.steam });
 
     // ветер сдувает вражеские снаряды в полёте, теряя силу за каждый
     let windMul = 1;
@@ -394,13 +508,80 @@ export class Battle {
       slow,
       interrupt: def.interrupt,
       burn: spell === 'fireball' || comboBurn,
+      combo: combo?.id,
+      steam: combo?.steam,
     });
+    projectile.netId = projectile.id;
+    if (this.remote && combo?.steam) this.sentSteam.set(projectile.id, combo.id);
     this.emit({ type: 'cast', side: 'player', spell, quality, damage, projectile, grade, combo: this.combo });
     return true;
   }
 
-  /** Каст врага (из BotAI). */
-  enemyCast(spell: SpellId) {
+  /** Рецепт для принятого каста `spell` (или null) и обновление пары. */
+  private takeCombo(spell: SpellId): ComboDef | undefined {
+    const ch = this.comboChain;
+    const inWindow = !!ch && this.t - ch.t <= COMBO_CONFIG.windowMs;
+    const combo = inWindow ? COMBOS.find((c) => c.first === ch!.spell && c.then === spell) : undefined;
+    if (combo && this.t >= (this.comboReadyAt[combo.id] ?? 0)) {
+      this.comboReadyAt[combo.id] = this.t + combo.cooldownMs;
+      this.comboChain = null;
+      return combo;
+    }
+    // окно истекло, рецепта нет или он на перезарядке — обычная атака, она же начало новой пары
+    this.comboChain = { spell, t: this.t };
+    return undefined;
+  }
+
+  /** Цель загорится или уже горит — для подсказки «Парового взрыва». */
+  private targetBurns() {
+    if (this.remote) return this.remoteBurning || this.projectiles.some((p) => p.to === 'enemy' && p.burn);
+    return this.enemy.burningUntil > this.t || this.projectiles.some((p) => p.to === 'enemy' && p.burn);
+  }
+
+  /** Подсказка продолжения: доступные рецепты после первого заклинания пары и остаток окна. */
+  comboHint(): ComboHint | null {
+    const ch = this.comboChain;
+    if (!ch || this.over) return null;
+    const leftMs = COMBO_CONFIG.windowMs - (this.t - ch.t);
+    if (leftMs < 0) return null;
+    const options = COMBOS.filter((c) => c.first === ch.spell).map((def): ComboOption => {
+      const cooldownMs = Math.max(0, Math.max(this.comboReadyAt[def.id] ?? 0, this.player.cooldowns[def.then] ?? 0) - this.t);
+      const status: ComboOption['status'] =
+        this.allowedSpells && !this.allowedSpells.includes(def.then)
+          ? 'banned'
+          : cooldownMs > 0
+            ? 'cooldown'
+            : def.steam && !this.targetBurns()
+              ? 'noTarget'
+              : 'ready';
+      return { def, status, cooldownMs };
+    });
+    return options.length ? { first: ch.spell, leftMs, windowMs: COMBO_CONFIG.windowMs, options } : null;
+  }
+
+  /** Оглушение: бот теряет телеграф и ждёт, игрок не может атаковать. */
+  stun(side: Side, ms: number) {
+    const f = this.fighter(side);
+    f.stunnedUntil = Math.max(f.stunnedUntil, this.t + ms);
+    if (side === 'enemy' && !this.remote) this.bot.interrupt();
+    this.emit({ type: 'stunned', side, ms });
+  }
+
+  /** PvP, отправитель: получатель сообщил, сработал ли «Паровой взрыв» (он авторитетен по своему HP). */
+  remoteComboResult(netId: number, ok: boolean) {
+    const id = this.sentSteam.get(netId);
+    if (!id) return;
+    this.sentSteam.delete(netId);
+    const def = COMBOS.find((c) => c.id === id)!;
+    if (ok) this.emit({ type: 'comboEffect', id, by: 'player', bonus: def.steam!.bonusDamage, stunMs: def.steam!.stunMs });
+    else this.emit({ type: 'comboFizzle', id, by: 'player', reason: 'notBurning' });
+  }
+
+  /**
+   * Каст врага (из BotAI). travelMs — своя скорость снаряда (медленный учебный выстрел),
+   * powerMul и extra — особые атаки противников. Возвращает первый снаряд.
+   */
+  enemyCast(spell: SpellId, travelMs = SPELLS[spell].travelMs, powerMul = 1, extra: Partial<Projectile> = {}): Projectile | undefined {
     if (spell === 'ice' && this.enemy.burningUntil > this.t) {
       this.enemy.burningUntil = 0;
       this.emit({ type: 'burn', side: 'enemy', on: false });
@@ -409,8 +590,9 @@ export class Battle {
     const quality = 0.7 + 0.3 * this.rng();
     const charge = spell === 'fireball' ? 0.3 + 0.5 * this.rng() : 1;
     const base = def.damage[0] + (def.damage[1] - def.damage[0]) * charge;
-    const damage = Math.round(base * this.level.dmgMul * (COMBAT.qualityBase + COMBAT.qualityK * quality));
+    const damage = Math.round(base * this.level.dmgMul * (COMBAT.qualityBase + COMBAT.qualityK * quality) * powerMul);
     const shots = def.hits ?? 1;
+    let first: Projectile | undefined;
     for (let i = 0; i < shots; i++) {
       const projectile = this.spawn({
         spell,
@@ -419,14 +601,19 @@ export class Battle {
         damage,
         quality,
         spawnT: this.t + i * 220,
-        hitT: this.t + i * 220 + def.travelMs,
+        hitT: this.t + i * 220 + travelMs,
         pierce: def.shieldPierce,
         shieldDamage: def.shieldDamage && Math.round(def.shieldDamage * this.level.dmgMul),
         slow: def.slow,
         interrupt: def.interrupt,
+        ...extra,
       });
-      if (i === 0) this.emit({ type: 'cast', side: 'enemy', spell, quality, damage, projectile });
+      if (i === 0) {
+        first = projectile;
+        this.emit({ type: 'cast', side: 'enemy', spell, quality, damage, projectile });
+      }
     }
+    return first;
   }
 
   /** Удерживаемые позы игрока: щит и лечение. */
@@ -451,7 +638,8 @@ export class Battle {
       } else if (!this.healRejected) {
         this.healRejected = true;
         const cooldown = this.t < readyAt;
-        const reason = cooldown ? `Перезарядка ${((readyAt - this.t) / 1000).toFixed(1)} с` : 'Мало маны';
+        const s = ((readyAt - this.t) / 1000).toFixed(1);
+        const reason = cooldown ? tr(`Перезарядка ${s} с`, `Cooldown ${s} s`) : tr('Мало маны', 'Not enough mana');
         this.emit({ type: 'reject', spell: 'heal', name: SPELLS.heal.name, kind: cooldown ? 'cooldown' : 'mana', reason });
       }
     }
@@ -460,7 +648,7 @@ export class Battle {
       this.healRejected = false;
     }
 
-    const canShield = (shield || superShield) && !p.healing && !p.shield.brokenUntil;
+    const canShield = (shield || superShield) && !this.shieldLocked && !p.healing && !p.shield.brokenUntil;
     this.superShield = superShield && canShield;
     this.setShield('player', canShield);
   }
@@ -511,14 +699,17 @@ export class Battle {
       }
     }
 
+    this.trait?.beforeHits();
     const due = this.projectiles.filter((p) => p.hitT <= this.t);
     if (due.length) {
       this.projectiles = this.projectiles.filter((p) => p.hitT > this.t);
       due.forEach((p) => this.resolveHit(p));
     }
 
-    if (!this.remote) {
+    if (!this.remote && this.botEnabled) {
       this.checkEnrage();
+      // смерть в этом кадре ещё не объявлена (checkEnd ниже) — особая атака мёртвого не стреляет
+      if (this.enemy.hp > 0 && this.player.hp > 0) this.trait?.afterHits(dt);
       this.bot.tick(playerCharging);
     }
     this.checkEnd();
@@ -540,21 +731,28 @@ export class Battle {
     let shieldDamage = 0;
     const blocked = sh.up && !sh.brokenUntil;
 
-    // бот уклоняется от снарядов игрока (кроме мгновенной молнии и рун-тюрьмы)
+    // бот уклоняется от снарядов игрока (кроме мгновенной молнии и рун-тюрьмы);
+    // сосредоточенный на подготовке, замахе или оглушённый противник не уклоняется
     if (
       p.to === 'enemy' &&
       !this.remote &&
       !p.freezeMs &&
       p.spell !== 'lightning' &&
+      !this.trait?.holdsBot &&
       this.rng() < (this.level.dodgeChance ?? 0)
     ) {
       this.emit({ type: 'enemyDodged', spell: p.spell });
+      if (p.steam && p.combo) this.emit({ type: 'comboFizzle', id: p.combo, by: p.from, reason: 'dodged', netId: p.netId });
       return;
     }
+
+    // особая механика противника: снаряд дошёл до него — сорвать подготовку, растопить броню…
+    const traitMul = p.to === 'enemy' && this.trait ? this.trait.onEnemyHit(p, blocked) : 1;
 
     // уклонение: снаряд пролетает мимо
     if (p.to === 'player' && this.t <= this.dodgeUntil) {
       this.emit({ type: 'dodged', spell: p.spell });
+      if (p.steam && p.combo) this.emit({ type: 'comboFizzle', id: p.combo, by: p.from, reason: 'dodged', netId: p.netId });
       return;
     }
 
@@ -569,8 +767,11 @@ export class Battle {
     if (blocked && p.to === 'player') {
       const lead = this.t - sh.upAt;
       if (lead <= COMBAT.parryWindowMs) {
-        const back = this.spawn({ ...p, from: 'player', to: 'enemy', spawnT: this.t, hitT: this.t + Math.max(150, p.hitT - p.spawnT) });
+        // отражённый снаряд — обычный: без эффектов чужой комбинации и сетевого id
+        const back = this.spawn({ ...p, from: 'player', to: 'enemy', spawnT: this.t, hitT: this.t + Math.max(150, p.hitT - p.spawnT), combo: undefined, steam: undefined, netId: undefined });
+        if (p.steam && p.combo) this.emit({ type: 'comboFizzle', id: p.combo, by: p.from, reason: 'blocked', netId: p.netId });
         this.emit({ type: 'parry', side: 'player', leadMs: Math.round(lead), projectile: back });
+        this.trait?.onParry(p);
         return;
       }
       if (lead <= COMBAT.parryHintMs) this.emit({ type: 'parryMiss', side: 'player', deltaMs: -Math.round(lead) });
@@ -619,7 +820,20 @@ export class Battle {
       }
     }
 
-    hpDamage = Math.round(hpDamage);
+    // «Паровой взрыв»: решается при попадании. Снаряды кадра — по порядку выпуска, поэтому шар,
+    // попавший в том же кадре раньше льда, уже поджёг цель. Щит гасит лёд — эффекта нет.
+    if (p.steam && p.combo) {
+      if (blocked) this.emit({ type: 'comboFizzle', id: p.combo, by: p.from, reason: 'blocked', netId: p.netId });
+      else if (target.burningUntil > this.t) {
+        target.burningUntil = 0;
+        this.emit({ type: 'burn', side: p.to, on: false });
+        hpDamage += p.steam.bonusDamage;
+        this.stun(p.to, p.steam.stunMs);
+        this.emit({ type: 'comboEffect', id: p.combo, by: p.from, bonus: p.steam.bonusDamage, stunMs: p.steam.stunMs, netId: p.netId });
+      } else this.emit({ type: 'comboFizzle', id: p.combo, by: p.from, reason: 'notBurning', netId: p.netId });
+    }
+
+    hpDamage = Math.round(hpDamage * traitMul);
     target.hp = Math.max(0, target.hp - hpDamage);
     if (p.to === 'player' && hpDamage > 0) this.lastPlayerHitAt = this.t;
     this.emit({ type: 'hit', target: p.to, spell: p.spell, hpDamage, shieldDamage: Math.round(shieldDamage), blocked });
@@ -646,11 +860,21 @@ export class Battle {
     slowMs: number | null;
     interrupt: boolean;
     travelMs: number;
-  }) {
-    if (this.over) return;
+    /** Необязательные поля — совместимость со старыми клиентами. */
+    cid?: number;
+    burn?: boolean;
+    combo?: ComboId | null;
+    steam?: { bonusDamage: number; stunMs: number } | null;
+  }): boolean {
+    if (this.over) return false;
+    // повтор того же сообщения не применяется дважды (урон уже включает бонус комбинации)
+    if (c.cid !== undefined) {
+      if (this.seenCasts.has(c.cid)) return false;
+      this.seenCasts.add(c.cid);
+    }
     if (c.spell === 'heal') {
       this.emit({ type: 'cast', side: 'enemy', spell: 'heal', quality: c.quality, damage: 0 });
-      return;
+      return true;
     }
     const projectile = this.spawn({
       spell: c.spell,
@@ -664,13 +888,19 @@ export class Battle {
       shieldDamage: c.shieldDamage ?? undefined,
       slow: c.slowFactor && c.slowMs ? { factor: c.slowFactor, ms: c.slowMs } : undefined,
       interrupt: c.interrupt,
+      burn: c.burn,
+      combo: c.combo ?? undefined,
+      steam: c.steam ?? undefined,
+      netId: c.cid,
     });
     this.emit({ type: 'cast', side: 'enemy', spell: c.spell, quality: c.quality, damage: c.damage, projectile });
+    return true;
   }
 
   /** PvP: состояние соперника (он авторитетен по своему HP). */
-  applyRemoteState(s: { hp: number; maxHp: number; shieldUp: boolean; durability: number; shieldMax: number }) {
+  applyRemoteState(s: { hp: number; maxHp: number; shieldUp: boolean; durability: number; shieldMax: number; burning?: boolean }) {
     const e = this.enemy;
+    this.remoteBurning = !!s.burning;
     e.maxHp = s.maxHp;
     e.hp = s.hp;
     e.shield.max = s.shieldMax;
